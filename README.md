@@ -13,11 +13,11 @@ Korai, működő projektváz egy három léptékű, procedurálisan felépülő 
 
 A `Main` jelenetben a `ViewRouter` külön példányosítja a három nézetet:
 
-- `GalaxyView`: négy kijelölhető helyőrző csillag;
+- `GalaxyView`: seedből determinisztikusan generált, MultiMesh-ben megjelenített 50 000 csillagos spirálgalaxis;
 - `SystemView`: egy csillag és három kijelölhető helyőrző bolygó;
 - `PlanetView`: körbeforgatható bolygó egyszerű procedurális shaderrel.
 
-A bal egérgomb kijelöl, a jobb egérgombbal húzva a kamera kering, a görgő zoomol. A HUD gombjai nyitják meg a következő nézetet és lépnek vissza. A nézetcsere közben a `TransitionController` kamera-zoommal és fényvillanással takarja el a jelenet- és koordinátaváltást. A `ViewRouter` nézetenként elmenti és visszaállítja a kameraállapotot.
+A bal egérgomb kijelöl, a jobb egérgombbal húzva a kamera kering, a görgő zoomol. A galaxisszintű kijelölés analitikus sugártesztet használ, csillagonkénti node vagy collider nélkül. A HUD gombjai nyitják meg a következő nézetet és lépnek vissza. A nézetcsere közben a `TransitionController` kamera-zoommal és fényvillanással takarja el a jelenet- és koordinátaváltást. A `ViewRouter` nézetenként elmenti és visszaállítja a kameraállapotot. A fejlesztői panel a seedet, csillagszámot, spirálkarok számát és az FPS-t mutatja.
 
 ## Architektúra
 
@@ -30,9 +30,11 @@ Main
     ├── GalaxyView
     ├── SystemView
     └── PlanetView
+
+Galaxy.Core                   Godot-független seedek, stabil ID-k és generálás
 ```
 
-A későbbi seedelt procedurális generálás motorfüggetlen C# rétegbe kerül. Ez a váz szándékosan nem tartalmaz végleges galaxismodellt, GPU-s csillagpipeline-t vagy nagy elemszámú generálást; a Godot-réteg most csak a jelenetek, kamera, input, UI és átmenetek felelőse.
+A `Galaxy.Core` külön .NET 8 projekt, és nem hivatkozik Godotra. A verziózott spirálgenerátor 64 bites `GalaxySeed`, rögzített 64 bites keverés és stabil csillagindex alapján állítja elő a katalógust. A Godot-réteg ezt renderadattá alakítja, de nem módosítja a procedurális eredményt. Compute shader, köd, bolygógenerálás és végleges grafika még nincs a prototípusban.
 
 ## Indítás és ellenőrzés
 
@@ -44,6 +46,12 @@ Parancssoros C# ellenőrzés:
 
 ```powershell
 dotnet build .\GalaxyEngine3D.csproj
+```
+
+Motorfüggetlen generátortesztek:
+
+```powershell
+dotnet test .\Galaxy.Core.Tests\Galaxy.Core.Tests.csproj
 ```
 
 Headless runtime smoke teszt Godotból (kijelölés, teljes oda-vissza navigáció és kamera-visszaállítás):

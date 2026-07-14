@@ -72,7 +72,12 @@ public abstract partial class GameView : Node3D
         _selectedMesh = mesh;
         _selectedMeshScale = mesh.Scale;
         mesh.Scale *= 1.2f;
-        SelectionName = mesh.Name.ToString().Replace('_', ' ');
-        SelectionChanged?.Invoke(SelectionName);
+        SetSelectionName(mesh.Name.ToString().Replace('_', ' '));
+    }
+
+    protected void SetSelectionName(string? selectionName)
+    {
+        SelectionName = selectionName;
+        SelectionChanged?.Invoke(selectionName);
     }
 }

@@ -13,10 +13,14 @@ public partial class MainController : Node
     private Label _titleLabel = null!;
     private Label _selectionLabel = null!;
     private Label _hintLabel = null!;
+    private Label _developerInfoLabel = null!;
     private Button _backButton = null!;
     private Button _nextButton = null!;
     private GameView? _activeView;
     private bool _navigationLocked;
+    private ulong _galaxySeed;
+    private int _galaxyStarCount;
+    private int _galaxyArmCount;
 
     public override void _Ready()
     {
@@ -25,6 +29,7 @@ public partial class MainController : Node
         _titleLabel = GetNode<Label>("Hud/Panel/Margin/VBox/Title");
         _selectionLabel = GetNode<Label>("Hud/Panel/Margin/VBox/Selection");
         _hintLabel = GetNode<Label>("Hud/Panel/Margin/VBox/Hint");
+        _developerInfoLabel = GetNode<Label>("Hud/DeveloperPanel/Margin/Info");
         _backButton = GetNode<Button>("Hud/Panel/Margin/VBox/Buttons/Back");
         _nextButton = GetNode<Button>("Hud/Panel/Margin/VBox/Buttons/Next");
 
@@ -32,6 +37,20 @@ public partial class MainController : Node
         _backButton.Pressed += OnBackPressed;
         _nextButton.Pressed += OnNextPressed;
         _router.Initialize();
+    }
+
+    public override void _Process(double delta)
+    {
+        RefreshDeveloperInfo();
+    }
+
+    private void RefreshDeveloperInfo()
+    {
+        _developerInfoLabel.Text =
+            $"Seed: {_galaxySeed}\n" +
+            $"Csillagok: {_galaxyStarCount:N0}\n" +
+            $"Spirálkarok: {_galaxyArmCount}\n" +
+            $"FPS: {Engine.GetFramesPerSecond()}";
     }
 
     private void OnCurrentViewChanged(GameView view)
@@ -43,6 +62,13 @@ public partial class MainController : Node
 
         _activeView = view;
         _activeView.SelectionChanged += OnSelectionChanged;
+        if (view is GalaxyView galaxyView)
+        {
+            _galaxySeed = galaxyView.Seed.Value;
+            _galaxyStarCount = galaxyView.GeneratedStarCount;
+            _galaxyArmCount = galaxyView.SpiralArmCount;
+        }
+        RefreshDeveloperInfo();
         RefreshHud();
     }
 
@@ -50,6 +76,7 @@ public partial class MainController : Node
     {
         if (_activeView?.Id == ViewId.Galaxy)
         {
+            _router.Context.SelectedStarId = (_activeView as GalaxyView)?.SelectedStarId;
             _router.Context.SelectedStarName = selectionName;
             _router.Context.SelectedPlanetName = null;
         }

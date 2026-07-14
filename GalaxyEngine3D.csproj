@@ -6,4 +6,10 @@
     <LangVersion>12.0</LangVersion>
     <RootNamespace>GalaxyEngine3D</RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Galaxy.Core/**/*.cs" />
+    <Compile Remove="Galaxy.Core.Tests/**/*.cs" />
+    <ProjectReference Include="Galaxy.Core/Galaxy.Core.csproj" />
+  </ItemGroup>
 </Project>

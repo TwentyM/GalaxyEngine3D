@@ -1,125 +1,54 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://Source/Views/GalaxyView.cs" id="1_view"]
 [ext_resource type="Script" path="res://Source/Camera/OrbitCameraController.cs" id="2_camera"]
 
-[sub_resource type="StandardMaterial3D" id="Material_disk"]
+[sub_resource type="StandardMaterial3D" id="Material_stars"]
+shading_mode = 0
+vertex_color_use_as_albedo = true
+albedo_color = Color(1, 1, 1, 1)
+
+[sub_resource type="SphereMesh" id="Mesh_star"]
+material = SubResource("Material_stars")
+radius = 0.5
+height = 1.0
+radial_segments = 6
+rings = 4
+
+[sub_resource type="MultiMesh" id="MultiMesh_stars"]
+transform_format = 1
+use_colors = true
+mesh = SubResource("Mesh_star")
+
+[sub_resource type="StandardMaterial3D" id="Material_selection"]
 transparency = 1
 shading_mode = 0
-albedo_color = Color(0.12, 0.2, 0.52, 0.17)
-
-[sub_resource type="CylinderMesh" id="Mesh_disk"]
-material = SubResource("Material_disk")
-top_radius = 7.0
-bottom_radius = 7.0
-height = 0.12
-radial_segments = 64
-
-[sub_resource type="StandardMaterial3D" id="Material_blue"]
-shading_mode = 0
-albedo_color = Color(0.38, 0.7, 1, 1)
+albedo_color = Color(0.3, 0.88, 1, 0.34)
 emission_enabled = true
-emission = Color(0.2, 0.48, 1, 1)
-emission_energy_multiplier = 4.0
-
-[sub_resource type="StandardMaterial3D" id="Material_gold"]
-shading_mode = 0
-albedo_color = Color(1, 0.82, 0.38, 1)
-emission_enabled = true
-emission = Color(1, 0.46, 0.08, 1)
-emission_energy_multiplier = 4.0
-
-[sub_resource type="StandardMaterial3D" id="Material_red"]
-shading_mode = 0
-albedo_color = Color(1, 0.32, 0.24, 1)
-emission_enabled = true
-emission = Color(1, 0.08, 0.04, 1)
-emission_energy_multiplier = 4.0
-
-[sub_resource type="StandardMaterial3D" id="Material_white"]
-shading_mode = 0
-albedo_color = Color(0.92, 0.94, 1, 1)
-emission_enabled = true
-emission = Color(0.68, 0.76, 1, 1)
+emission = Color(0.1, 0.62, 1, 1)
 emission_energy_multiplier = 3.0
 
-[sub_resource type="SphereMesh" id="Mesh_star_large"]
-radius = 0.7
-height = 1.4
-radial_segments = 24
-rings = 12
-
-[sub_resource type="SphereMesh" id="Mesh_star_medium"]
-radius = 0.52
-height = 1.04
-radial_segments = 20
-rings = 10
-
-[sub_resource type="SphereMesh" id="Mesh_star_small"]
-radius = 0.38
-height = 0.76
-radial_segments = 18
-rings = 9
-
-[sub_resource type="SphereShape3D" id="Shape_large"]
-radius = 0.8
-
-[sub_resource type="SphereShape3D" id="Shape_medium"]
-radius = 0.64
-
-[sub_resource type="SphereShape3D" id="Shape_small"]
-radius = 0.5
+[sub_resource type="SphereMesh" id="Mesh_selection"]
+material = SubResource("Material_selection")
+radius = 0.18
+height = 0.36
+radial_segments = 12
+rings = 6
 
 [node name="GalaxyView" type="Node3D"]
 script = ExtResource("1_view")
 
 [node name="Camera3D" type="Camera3D" parent="."]
-position = Vector3(0, 7, 18)
+position = Vector3(0, 10, 19)
 current = true
 script = ExtResource("2_camera")
 MinimumDistance = 7.0
-MaximumDistance = 40.0
+MaximumDistance = 50.0
 ZoomStep = 1.8
 
-[node name="GalaxyDisk" type="MeshInstance3D" parent="."]
-mesh = SubResource("Mesh_disk")
+[node name="Stars" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("MultiMesh_stars")
 
-[node name="Solara" type="MeshInstance3D" parent="."]
-position = Vector3(-3.8, 0.8, 0.5)
-mesh = SubResource("Mesh_star_large")
-material_override = SubResource("Material_gold")
-
-[node name="Picker" type="StaticBody3D" parent="Solara" groups=["selectable_star"]]
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Solara/Picker"]
-shape = SubResource("Shape_large")
-
-[node name="Caelum_Prime" type="MeshInstance3D" parent="."]
-position = Vector3(2.8, -0.2, -1.8)
-mesh = SubResource("Mesh_star_medium")
-material_override = SubResource("Material_blue")
-
-[node name="Picker" type="StaticBody3D" parent="Caelum_Prime" groups=["selectable_star"]]
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Caelum_Prime/Picker"]
-shape = SubResource("Shape_medium")
-
-[node name="Vesper" type="MeshInstance3D" parent="."]
-position = Vector3(3.6, 1.1, 2.7)
-mesh = SubResource("Mesh_star_small")
-material_override = SubResource("Material_red")
-
-[node name="Picker" type="StaticBody3D" parent="Vesper" groups=["selectable_star"]]
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Vesper/Picker"]
-shape = SubResource("Shape_small")
-
-[node name="Lumen_IX" type="MeshInstance3D" parent="."]
-position = Vector3(-0.2, -0.8, 4.4)
-mesh = SubResource("Mesh_star_medium")
-material_override = SubResource("Material_white")
-
-[node name="Picker" type="StaticBody3D" parent="Lumen_IX" groups=["selectable_star"]]
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Lumen_IX/Picker"]
-shape = SubResource("Shape_medium")
+[node name="SelectionMarker" type="MeshInstance3D" parent="."]
+visible = false
+mesh = SubResource("Mesh_selection")

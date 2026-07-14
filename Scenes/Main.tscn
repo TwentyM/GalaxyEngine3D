@@ -87,6 +87,26 @@ grow_vertical = 0
 text = "Jobb egérgomb: kamera forgatása · Görgő: zoom"
 horizontal_alignment = 2
 
+[node name="DeveloperPanel" type="PanelContainer" parent="Hud"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -230.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = 136.0
+grow_horizontal = 0
+
+[node name="Margin" type="MarginContainer" parent="Hud/DeveloperPanel"]
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="Info" type="Label" parent="Hud/DeveloperPanel/Margin"]
+text = "Seed: -\nCsillagok: -\nSpirálkarok: -\nFPS: -"
+horizontal_alignment = 2
+
 [node name="TransitionController" type="CanvasLayer" parent="."]
 layer = 100
 script = ExtResource("3_transition")
