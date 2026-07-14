@@ -104,14 +104,14 @@ public abstract partial class GameView : Node3D
 
         if (keyEvent.Keycode == Key.F && SelectedTarget is not null)
         {
-            orbitCamera.FocusOn(SelectedTarget.Position);
+            orbitCamera.AnimateFocusTo(SelectedTarget.Position);
             GetViewport().SetInputAsHandled();
             return true;
         }
 
         if (keyEvent.Keycode == Key.Home)
         {
-            orbitCamera.FocusOn(GlobalPosition);
+            orbitCamera.AnimateFocusTo(GlobalPosition);
             GetViewport().SetInputAsHandled();
             return true;
         }

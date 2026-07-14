@@ -37,7 +37,10 @@ MinimumDistance = 2.15
 MaximumDistance = 24.0
 ZoomExponent = 0.12
 PanSpeedFactor = 0.001
-KeyboardMoveSpeedFactor = 0.6
+CameraMoveSpeed = 0.6
+CameraAcceleration = 5.0
+CameraDeceleration = 7.0
+FocusDuration = 0.35
 
 [node name="Planet" type="MeshInstance3D" parent="."]
 mesh = SubResource("Mesh_planet")

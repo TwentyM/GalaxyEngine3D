@@ -38,6 +38,7 @@ public partial class RuntimeSmokeTest : Node
         Label developerInfo = main.GetNode<Label>("Hud/DeveloperPanel/Margin/Info");
 
         GalaxyView galaxy = RequireView<GalaxyView>(router);
+        AssertCameraRelativePlanarBasis();
         Assert(galaxy.GeneratedStarCount == 50_000, "The generated galaxy does not contain 50,000 stars.");
         double measuredFrameRate = await MeasureFrameRateAsync(90);
         GD.Print($"RUNTIME_FRAME_RATE: {measuredFrameRate:F1} FPS");
@@ -61,10 +62,29 @@ public partial class RuntimeSmokeTest : Node
             "ViewRouter did not receive the selected star position.");
 
         OrbitCameraController galaxyCamera = (OrbitCameraController)galaxy.Camera;
+        Assert(galaxyCamera.IsFocusAnimationActive,
+            "Selecting a star did not begin a smooth focus animation.");
+        Assert(router.CurrentView is GalaxyView,
+            "Selecting a star opened SystemView without explicit activation.");
+        galaxyCamera._UnhandledInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Middle,
+            Pressed = true,
+        });
+        Assert(!galaxyCamera.IsFocusAnimationActive,
+            "User camera input did not cancel the active focus animation.");
+        galaxyCamera._UnhandledInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Middle,
+            Pressed = false,
+        });
+
         galaxy._UnhandledInput(new InputEventKey { Keycode = Key.F, Pressed = true });
+        await WaitForFocusAnimationAsync(galaxyCamera);
         Assert(galaxyCamera.CameraFocusPosition.IsEqualApprox(selectedStarTarget.Position),
             "F did not focus the selected star.");
         galaxy._UnhandledInput(new InputEventKey { Keycode = Key.Home, Pressed = true });
+        await WaitForFocusAnimationAsync(galaxyCamera);
         Assert(galaxyCamera.CameraFocusPosition.IsEqualApprox(galaxy.GlobalPosition),
             "Home did not restore the view center focus.");
 
@@ -198,6 +218,43 @@ public partial class RuntimeSmokeTest : Node
 
         stopwatch.Stop();
         return frameCount / stopwatch.Elapsed.TotalSeconds;
+    }
+
+    private async Task WaitForFocusAnimationAsync(OrbitCameraController camera)
+    {
+        await ToSignal(
+            GetTree().CreateTimer(camera.FocusDuration + 0.1f),
+            SceneTreeTimer.SignalName.Timeout);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+    }
+
+    private static void AssertCameraRelativePlanarBasis()
+    {
+        (Vector3 forward, Vector3 right) = OrbitCameraController.CalculateCameraRelativePlanarBasis(
+            Vector3.Forward,
+            Vector3.Up,
+            Vector3.Forward);
+        Assert(forward.IsEqualApprox(Vector3.Forward),
+            "Camera-forward projection changed the expected forward direction.");
+        Assert(right.IsEqualApprox(Vector3.Right),
+            "Camera-relative right direction is inconsistent with the disk normal.");
+
+        (forward, right) = OrbitCameraController.CalculateCameraRelativePlanarBasis(
+            Vector3.Right,
+            Vector3.Up,
+            Vector3.Forward);
+        Assert(forward.IsEqualApprox(Vector3.Right) && right.IsEqualApprox(Vector3.Back),
+            "Rotating the camera did not rotate the planar movement basis consistently.");
+
+        (forward, right) = OrbitCameraController.CalculateCameraRelativePlanarBasis(
+            new Vector3(0.001f, -1.0f, 0.001f).Normalized(),
+            Vector3.Up,
+            Vector3.Forward);
+        Assert(forward.IsEqualApprox(Vector3.Forward) && right.IsEqualApprox(Vector3.Right),
+            "Near-vertical camera orientation did not use the stable fallback direction.");
+        Assert(Mathf.Abs(forward.Dot(right)) < 1e-5f &&
+            Mathf.Abs(forward.Dot(Vector3.Up)) < 1e-5f,
+            "Camera-relative planar basis is not orthogonal.");
     }
 
     private static void Assert(bool condition, string message)

@@ -46,7 +46,10 @@ MinimumDistance = 0.12
 MaximumDistance = 80.0
 ZoomExponent = 0.16
 PanSpeedFactor = 0.0012
-KeyboardMoveSpeedFactor = 0.7
+CameraMoveSpeed = 0.7
+CameraAcceleration = 5.0
+CameraDeceleration = 7.0
+FocusDuration = 0.45
 
 [node name="Stars" type="MultiMeshInstance3D" parent="."]
 multimesh = SubResource("MultiMesh_stars")

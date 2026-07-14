@@ -17,9 +17,9 @@ A `Main` jelenetben a `ViewRouter` külön példányosítja a három nézetet:
 - `SystemView`: egy csillag és három kijelölhető helyőrző bolygó;
 - `PlanetView`: körbeforgatható bolygó egyszerű procedurális shaderrel.
 
-A bal egérgomb kijelöl, a jobb egérgombbal húzva a kamera az aktuális fókuszpont körül kering, a középső egérgomb húzása pedig a kamera képernyősíkjában mozgatja a fókuszt. A görgő exponenciálisan zoomol. A `WASD` és a nyílbillentyűk a galaxis korongjának relatív síkjában, a `Q`/`E` arra merőlegesen mozgatják a fókuszt; `F` a kijelölt objektumra, `Home` a nézet középpontjára fókuszál. A galaxisszintű kijelölés analitikus sugártesztet használ, csillagonkénti node vagy collider nélkül.
+A bal egérgomb kijelöl egy csillagot, és azonnal sima, megszakítható fókuszanimációt indít rá; ettől a `SystemView` még nem nyílik meg. A jobb egérgombbal húzva a kamera az aktuális fókuszpont körül kering, a középső egérgomb húzása pedig a kamera képernyősíkjában pásztázza a fókuszt. A görgő exponenciálisan zoomol. A `W`/`S` a kamera előreirányának galaxis síkjára vetített irányában mozgat, az `A`/`D` ehhez képest balra-jobbra; a közel függőleges kameranézet stabil utolsó irányt használ. A mozgás a zoomtávolsággal skálázódik, gyorsítása és lassítása simított. A `Q`/`E` a galaxis síkjára merőlegesen mozgat, `F` újrafókuszál a kijelölt objektumra, `Home` pedig a nézet középpontjára. Bármely felhasználói kameramozgás biztonságosan megszakítja az aktív fókuszanimációt.
 
-A HUD gombjai nyitják meg a következő nézetet és lépnek vissza. Előrelépés csak érvényes kijelöléssel indul: a kamera a kijelölt csillag vagy bolygó tényleges pozíciójára közelít, majd a képet kitöltő objektum és fényvillanás alatt történik a jelenet- és koordinátaváltás. A `ViewRouter` nézetenként a fókuszponttal együtt menti és állítja vissza a kameraállapotot. A fejlesztői panel a seedet, csillagszámot, spirálkarok számát és az FPS-t mutatja.
+A HUD külön aktiválógombja nyitja meg a következő nézetet, a vissza gomb pedig visszalép. Előrelépés csak érvényes kijelöléssel indul: a kamera a kijelölt csillag vagy bolygó tényleges pozíciójára közelít, majd a képet kitöltő objektum és fényvillanás alatt történik a jelenet- és koordinátaváltás. A `ViewRouter` nézetenként a fókuszponttal együtt menti és állítja vissza a kameraállapotot. A galaxisszintű kijelölés analitikus sugártesztet használ, csillagonkénti node vagy collider nélkül.
 
 ## Architektúra
 
@@ -36,7 +36,7 @@ Main
 Galaxy.Core                   Godot-független seedek, stabil ID-k és generálás
 ```
 
-A `Galaxy.Core` külön .NET 8 projekt, és nem hivatkozik Godotra. A 2-es verziójú spirálgenerátor 64 bites `GalaxySeed`, rögzített 64 bites keverés és stabil csillagindex alapján állítja elő a katalógust. Az eloszlás exponenciális alapkorongból, karerősítésből és központi dudorból áll; a csillagok vizuális sugarát is figyelembe vevő minimális távolságot determinisztikus térbeli hash-rács ellenőrzi. A Godot-réteg ezt renderadattá alakítja, de nem módosítja a procedurális eredményt. Compute shader, köd, bolygógenerálás és végleges grafika még nincs a prototípusban.
+A `Galaxy.Core` külön .NET 8 projekt, és nem hivatkozik Godotra. A 3-as verziójú spirálgenerátor 64 bites `GalaxySeed`, rögzített 64 bites keverés és stabil csillagindex alapján állítja elő a katalógust. Az exponenciális korong spirálkarjai a középpontig futnak, ahol folyamatosan sűrűbbé, szélesebbé és vastagabbá válva külön gömbszerű dudor nélkül olvadnak össze belső lemezzé. A külső perem `EdgeFadeStart` után seedelt, szög- és karfüggő valószínűséggel halványul el. A csillagok vizuális sugarát is figyelembe vevő minimális távolságot determinisztikus térbeli hash-rács ellenőrzi, a centrumban külön faktorral enyhíthető. A Godot-réteg ezt renderadattá alakítja, de nem módosítja a procedurális eredményt. Compute shader, köd, bolygógenerálás és végleges grafika még nincs a prototípusban.
 
 ## Indítás és ellenőrzés
 

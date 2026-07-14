@@ -2,6 +2,7 @@ using System;
 using Galaxy.Core;
 using Galaxy.Core.Generation;
 using Godot;
+using GalaxyEngine3D.Camera;
 using GalaxyEngine3D.Core;
 
 namespace GalaxyEngine3D.Views;
@@ -12,13 +13,18 @@ public partial class GalaxyView : GameView
     [Export(PropertyHint.Range, "1,16,1")] public int SpiralArmCount { get; set; } = 4;
     [Export(PropertyHint.Range, "1.0,100.0,0.1")] public float GalaxyRadius { get; set; } = 8.0f;
     [Export(PropertyHint.Range, "0.0,20.0,0.05")] public float DiskThickness { get; set; } = 0.8f;
-    [Export(PropertyHint.Range, "0.0,50.0,0.1")] public float BulgeRadius { get; set; } = 2.0f;
     [Export(PropertyHint.Range, "-12.0,12.0,0.1")] public float ArmTwistRadians { get; set; } = 4.5f;
     [Export(PropertyHint.Range, "0.1,50.0,0.1")] public float DiskScaleLength { get; set; } = 2.4f;
     [Export(PropertyHint.Range, "0.0,10.0,0.05")] public float InterArmDensityFactor { get; set; } = 0.35f;
     [Export(PropertyHint.Range, "0.0,10.0,0.05")] public float ArmDensityMultiplier { get; set; } = 1.5f;
-    [Export(PropertyHint.Range, "0.0,10.0,0.05")] public float BulgeDensityMultiplier { get; set; } = 1.8f;
+    [Export(PropertyHint.Range, "1.0,8.0,0.05")] public float InnerDensityMultiplier { get; set; } = 2.2f;
+    [Export(PropertyHint.Range, "1.0,8.0,0.05")] public float InnerThicknessMultiplier { get; set; } = 2.4f;
+    [Export(PropertyHint.Range, "1.0,8.0,0.05")] public float InnerArmWidthMultiplier { get; set; } = 3.0f;
+    [Export(PropertyHint.Range, "0.1,20.0,0.1")] public float CoreRadius { get; set; } = 2.0f;
+    [Export(PropertyHint.Range, "0.1,100.0,0.1")] public float EdgeFadeStart { get; set; } = 6.2f;
+    [Export(PropertyHint.Range, "0.0,0.35,0.01")] public float EdgeNoiseStrength { get; set; } = 0.12f;
     [Export(PropertyHint.Range, "0.0,1.0,0.001")] public float MinimumStarDistance { get; set; } = 0.006f;
+    [Export(PropertyHint.Range, "0.1,1.0,0.01")] public float InnerMinimumDistanceFactor { get; set; } = 0.7f;
     [Export(PropertyHint.Range, "1,500000,1")] public int StarCount { get; set; } = 50_000;
     [Export(PropertyHint.Range, "0.01,1.0,0.01")] public float PickRadius { get; set; } = 0.16f;
 
@@ -54,13 +60,18 @@ public partial class GalaxyView : GameView
             SpiralArmCount = SpiralArmCount,
             Radius = GalaxyRadius,
             DiskThickness = DiskThickness,
-            BulgeRadius = BulgeRadius,
             ArmTwistRadians = ArmTwistRadians,
             DiskScaleLength = DiskScaleLength,
             InterArmDensityFactor = InterArmDensityFactor,
             ArmDensityMultiplier = ArmDensityMultiplier,
-            BulgeDensityMultiplier = BulgeDensityMultiplier,
+            InnerDensityMultiplier = InnerDensityMultiplier,
+            InnerThicknessMultiplier = InnerThicknessMultiplier,
+            InnerArmWidthMultiplier = InnerArmWidthMultiplier,
+            CoreRadius = CoreRadius,
+            EdgeFadeStart = EdgeFadeStart,
+            EdgeNoiseStrength = EdgeNoiseStrength,
             MinimumStarDistance = MinimumStarDistance,
+            InnerMinimumDistanceFactor = InnerMinimumDistanceFactor,
             StarCount = StarCount,
         };
 
@@ -92,7 +103,7 @@ public partial class GalaxyView : GameView
             return;
         }
 
-        SelectStar(selectedIndex);
+        SelectStar(selectedIndex, animateFocus: true);
         GetViewport().SetInputAsHandled();
     }
 
@@ -137,8 +148,8 @@ public partial class GalaxyView : GameView
         }
 
         _starInstances.Multimesh = multiMesh;
-        float extent = GalaxyRadius + 1.0f;
-        float verticalExtent = Mathf.Max(DiskThickness, BulgeRadius) + 1.0f;
+        float extent = (GalaxyRadius * (1.0f + (EdgeNoiseStrength * 1.5f))) + 1.0f;
+        float verticalExtent = (DiskThickness * InnerThicknessMultiplier) + 1.0f;
         _starInstances.CustomAabb = new Aabb(
             new Vector3(-extent, -verticalExtent, -extent),
             new Vector3(extent * 2.0f, verticalExtent * 2.0f, extent * 2.0f));
@@ -182,7 +193,7 @@ public partial class GalaxyView : GameView
         return bestIndex;
     }
 
-    private void SelectStar(int stableIndex)
+    private void SelectStar(int stableIndex, bool animateFocus)
     {
         if (_galaxy is null)
         {
@@ -199,6 +210,11 @@ public partial class GalaxyView : GameView
             $"Csillag {star.Id}",
             () => ToGlobal(localPosition),
             star.VisualRadius);
+
+        if (animateFocus && Camera is OrbitCameraController orbitCamera)
+        {
+            orbitCamera.AnimateFocusTo(ToGlobal(localPosition));
+        }
     }
 
     private void RestoreSelection()
@@ -212,7 +228,7 @@ public partial class GalaxyView : GameView
         {
             if (_galaxy.Stars[index].Id == selectedId)
             {
-                SelectStar(index);
+                SelectStar(index, animateFocus: false);
                 return;
             }
         }

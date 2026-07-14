@@ -8,8 +8,6 @@ public sealed record GalaxyGenerationParameters
 
     public double DiskThickness { get; init; } = 0.8;
 
-    public double BulgeRadius { get; init; } = 2.0;
-
     /// <summary>Total arm rotation from the center to the rim, in radians.</summary>
     public double ArmTwistRadians { get; init; } = 4.5;
 
@@ -22,11 +20,29 @@ public sealed record GalaxyGenerationParameters
     /// <summary>Relative density enhancement contributed by spiral arms.</summary>
     public double ArmDensityMultiplier { get; init; } = 1.5;
 
-    /// <summary>Relative density contributed by the central spheroidal bulge.</summary>
-    public double BulgeDensityMultiplier { get; init; } = 1.8;
+    /// <summary>Finite density enhancement at the center of the inner disk.</summary>
+    public double InnerDensityMultiplier { get; init; } = 2.2;
+
+    /// <summary>Vertical disk thickness multiplier reached at the center.</summary>
+    public double InnerThicknessMultiplier { get; init; } = 2.4;
+
+    /// <summary>Spiral arm width multiplier reached at the center.</summary>
+    public double InnerArmWidthMultiplier { get; init; } = 3.0;
+
+    /// <summary>Radius over which the spiral arms merge smoothly into the inner disk.</summary>
+    public double CoreRadius { get; init; } = 2.0;
+
+    /// <summary>Radius at which the probabilistic outer fade starts.</summary>
+    public double EdgeFadeStart { get; init; } = 6.2;
+
+    /// <summary>Relative angular and per-arm variation of the outer fade boundary.</summary>
+    public double EdgeNoiseStrength { get; init; } = 0.12;
 
     /// <summary>Required empty gap between the visual surfaces of two stars.</summary>
     public double MinimumStarDistance { get; init; } = 0.006;
+
+    /// <summary>Multiplier applied to minimum surface clearance at the center.</summary>
+    public double InnerMinimumDistanceFactor { get; init; } = 0.7;
 
     public int MaxPlacementAttempts { get; init; } = 256;
 
@@ -49,11 +65,6 @@ public sealed record GalaxyGenerationParameters
             throw new ArgumentOutOfRangeException(nameof(DiskThickness), "Disk thickness must be finite and non-negative.");
         }
 
-        if (!double.IsFinite(BulgeRadius) || BulgeRadius < 0.0 || BulgeRadius > Radius)
-        {
-            throw new ArgumentOutOfRangeException(nameof(BulgeRadius), "Bulge radius must be finite and between zero and the galaxy radius.");
-        }
-
         if (!double.IsFinite(ArmTwistRadians))
         {
             throw new ArgumentOutOfRangeException(nameof(ArmTwistRadians), "Arm twist must be finite.");
@@ -74,14 +85,37 @@ public sealed record GalaxyGenerationParameters
             throw new ArgumentOutOfRangeException(nameof(ArmDensityMultiplier), "Arm density multiplier must be finite and non-negative.");
         }
 
-        if (!double.IsFinite(BulgeDensityMultiplier) || BulgeDensityMultiplier < 0.0)
+        if (!double.IsFinite(InnerDensityMultiplier) || InnerDensityMultiplier < 1.0)
         {
-            throw new ArgumentOutOfRangeException(nameof(BulgeDensityMultiplier), "Bulge density multiplier must be finite and non-negative.");
+            throw new ArgumentOutOfRangeException(nameof(InnerDensityMultiplier), "Inner density multiplier must be finite and at least one.");
         }
 
-        double effectiveDensity = InterArmDensityFactor + ArmDensityMultiplier +
-            (BulgeRadius > 0.0 ? BulgeDensityMultiplier : 0.0);
-        if (effectiveDensity <= 0.0)
+        if (!double.IsFinite(InnerThicknessMultiplier) || InnerThicknessMultiplier < 1.0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(InnerThicknessMultiplier), "Inner thickness multiplier must be finite and at least one.");
+        }
+
+        if (!double.IsFinite(InnerArmWidthMultiplier) || InnerArmWidthMultiplier < 1.0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(InnerArmWidthMultiplier), "Inner arm width multiplier must be finite and at least one.");
+        }
+
+        if (!double.IsFinite(CoreRadius) || CoreRadius <= 0.0 || CoreRadius > Radius)
+        {
+            throw new ArgumentOutOfRangeException(nameof(CoreRadius), "Core radius must be finite, positive, and no greater than the galaxy radius.");
+        }
+
+        if (!double.IsFinite(EdgeFadeStart) || EdgeFadeStart < CoreRadius || EdgeFadeStart >= Radius)
+        {
+            throw new ArgumentOutOfRangeException(nameof(EdgeFadeStart), "Edge fade start must be finite, outside the core, and below the nominal radius.");
+        }
+
+        if (!double.IsFinite(EdgeNoiseStrength) || EdgeNoiseStrength is < 0.0 or > 0.35)
+        {
+            throw new ArgumentOutOfRangeException(nameof(EdgeNoiseStrength), "Edge noise strength must be finite and between zero and 0.35.");
+        }
+
+        if (InterArmDensityFactor + ArmDensityMultiplier <= 0.0)
         {
             throw new ArgumentOutOfRangeException(nameof(InterArmDensityFactor), "At least one density component must be positive.");
         }
@@ -89,6 +123,11 @@ public sealed record GalaxyGenerationParameters
         if (!double.IsFinite(MinimumStarDistance) || MinimumStarDistance < 0.0)
         {
             throw new ArgumentOutOfRangeException(nameof(MinimumStarDistance), "Minimum star distance must be finite and non-negative.");
+        }
+
+        if (!double.IsFinite(InnerMinimumDistanceFactor) || InnerMinimumDistanceFactor is <= 0.0 or > 1.0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(InnerMinimumDistanceFactor), "Inner minimum-distance factor must be finite, positive, and no greater than one.");
         }
 
         if (MaxPlacementAttempts is < 1 or > 4096)

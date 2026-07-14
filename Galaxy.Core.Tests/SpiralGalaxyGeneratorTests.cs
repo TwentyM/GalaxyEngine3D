@@ -12,13 +12,18 @@ public sealed class SpiralGalaxyGeneratorTests
         SpiralArmCount = 4,
         Radius = 8.0,
         DiskThickness = 0.8,
-        BulgeRadius = 2.0,
         ArmTwistRadians = 4.5,
         DiskScaleLength = 2.4,
         InterArmDensityFactor = 0.35,
         ArmDensityMultiplier = 1.5,
-        BulgeDensityMultiplier = 1.8,
+        InnerDensityMultiplier = 2.2,
+        InnerThicknessMultiplier = 2.4,
+        InnerArmWidthMultiplier = 3.0,
+        CoreRadius = 2.0,
+        EdgeFadeStart = 6.2,
+        EdgeNoiseStrength = 0.12,
         MinimumStarDistance = 0.006,
+        InnerMinimumDistanceFactor = 0.7,
         StarCount = 512,
     };
 
@@ -73,8 +78,10 @@ public sealed class SpiralGalaxyGeneratorTests
                 (star.Position.X * star.Position.X) +
                 (star.Position.Z * star.Position.Z));
 
-            Assert.InRange(planarRadius, 0.0, Parameters.Radius + 1e-12);
-            Assert.InRange(Math.Abs(star.Position.Y), 0.0, Math.Max(Parameters.DiskThickness, Parameters.BulgeRadius * 0.65) + 1e-12);
+            double maximumEdge = Parameters.Radius * (1.0 + (Parameters.EdgeNoiseStrength * 1.5));
+            Assert.InRange(planarRadius, 0.0, maximumEdge + 1e-12);
+            Assert.InRange(Math.Abs(star.Position.Y), 0.0,
+                (Parameters.DiskThickness * Parameters.InnerThicknessMultiplier) + 1e-12);
             Assert.InRange(star.TemperatureKelvin, 2_500.0f, 12_000.0f);
             Assert.True(star.Luminosity > 0.0f);
             Assert.InRange(star.VisualRadius, 0.0275f, 0.045f);
@@ -97,7 +104,11 @@ public sealed class SpiralGalaxyGeneratorTests
                 double dy = first.Position.Y - second.Position.Y;
                 double dz = first.Position.Z - second.Position.Z;
                 double distance = Math.Sqrt((dx * dx) + (dy * dy) + (dz * dz));
-                double required = Parameters.MinimumStarDistance + first.VisualRadius + second.VisualRadius;
+                double firstFactor = LocalClearanceFactor(first.Position, Parameters);
+                double secondFactor = LocalClearanceFactor(second.Position, Parameters);
+                double required =
+                    (Parameters.MinimumStarDistance * (firstFactor + secondFactor) * 0.5) +
+                    first.VisualRadius + second.VisualRadius;
 
                 Assert.True(distance + 1e-12 >= required,
                     $"Stars {firstIndex} and {secondIndex} overlap: {distance} < {required}.");
@@ -110,8 +121,6 @@ public sealed class SpiralGalaxyGeneratorTests
     {
         GalaxyGenerationParameters diskOnly = Parameters with
         {
-            BulgeRadius = 0.0,
-            BulgeDensityMultiplier = 0.0,
             InterArmDensityFactor = 1.0,
             ArmDensityMultiplier = 2.0,
             StarCount = 4_096,
@@ -140,6 +149,56 @@ public sealed class SpiralGalaxyGeneratorTests
 
         Assert.True(clearlyBetweenArms >= 80,
             $"Expected a sparse inter-arm population, found only {clearlyBetweenArms} stars.");
+    }
+
+    [Fact]
+    public void InnerDiskThickensContinuouslyWithoutSpheroidalBulge()
+    {
+        GalaxyGenerationParameters sample = Parameters with { StarCount = 12_000 };
+        GeneratedGalaxy galaxy = new SpiralGalaxyGenerator().Generate(new GalaxySeed(0x1AA3UL), sample);
+        double[] innerHeights = galaxy.Stars
+            .Where(star => PlanarRadius(star.Position) < sample.CoreRadius * 0.65)
+            .Select(star => Math.Abs(star.Position.Y))
+            .ToArray();
+        double[] outerHeights = galaxy.Stars
+            .Where(star => PlanarRadius(star.Position) is > 4.0 and < 5.5)
+            .Select(star => Math.Abs(star.Position.Y))
+            .ToArray();
+
+        Assert.True(innerHeights.Length > 250, "The inner disk sample is unexpectedly sparse.");
+        Assert.True(outerHeights.Length > 100, "The outer disk sample is unexpectedly sparse.");
+        Assert.True(innerHeights.Average() > outerHeights.Average() * 1.35,
+            "The inner disk did not become smoothly thicker toward the center.");
+        Assert.All(innerHeights, height => Assert.InRange(
+            height,
+            0.0,
+            sample.DiskThickness * sample.InnerThicknessMultiplier + 1e-12));
+    }
+
+    [Fact]
+    public void SeededEdgeFadeProducesNonUniformArmExtents()
+    {
+        GalaxyGenerationParameters sample = Parameters with { StarCount = 16_000 };
+        GeneratedGalaxy galaxy = new SpiralGalaxyGenerator().Generate(new GalaxySeed(0xED9EUL), sample);
+        double[] armExtents = new double[sample.SpiralArmCount];
+
+        foreach (GalaxyStar star in galaxy.Stars)
+        {
+            double radius = PlanarRadius(star.Position);
+            if (radius < sample.EdgeFadeStart)
+            {
+                continue;
+            }
+
+            int arm = NearestArm(star.Position, sample);
+            armExtents[arm] = Math.Max(armExtents[arm], radius);
+        }
+
+        Assert.All(armExtents, extent => Assert.True(extent > sample.EdgeFadeStart));
+        Assert.True(armExtents.Max() - armExtents.Min() > 0.08,
+            "All spiral arms ended at an effectively identical radius.");
+        Assert.True(galaxy.Stars.Any(star => PlanarRadius(star.Position) > sample.Radius),
+            "The probabilistic edge never extended beyond the nominal radius.");
     }
 
     [Fact]
@@ -173,7 +232,7 @@ public sealed class SpiralGalaxyGeneratorTests
             fingerprint = Fnv1A(fingerprint, BitConverter.SingleToUInt32Bits(star.VisualRadius));
         }
 
-        Assert.Equal(6_885_551_133_730_373_599UL, fingerprint);
+        Assert.Equal(15_136_868_901_730_548_750UL, fingerprint);
     }
 
     [Fact]
@@ -182,22 +241,51 @@ public sealed class SpiralGalaxyGeneratorTests
         Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { SpiralArmCount = 0 }).Validate());
         Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { Radius = 0.0 }).Validate());
         Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { DiskThickness = -0.1 }).Validate());
-        Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { BulgeRadius = 9.0 }).Validate());
         Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { ArmTwistRadians = double.NaN }).Validate());
         Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { DiskScaleLength = 0.0 }).Validate());
         Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { InterArmDensityFactor = -0.1 }).Validate());
         Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { ArmDensityMultiplier = -0.1 }).Validate());
-        Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { BulgeDensityMultiplier = -0.1 }).Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { InnerDensityMultiplier = 0.9 }).Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { InnerThicknessMultiplier = 0.9 }).Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { InnerArmWidthMultiplier = 0.9 }).Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { CoreRadius = 0.0 }).Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { EdgeFadeStart = Parameters.Radius }).Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { EdgeNoiseStrength = 0.5 }).Validate());
         Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with
         {
-            BulgeRadius = 0.0,
             InterArmDensityFactor = 0.0,
             ArmDensityMultiplier = 0.0,
-            BulgeDensityMultiplier = 1.0,
         }).Validate());
         Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { MinimumStarDistance = -0.1 }).Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { InnerMinimumDistanceFactor = 0.0 }).Validate());
         Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { MaxPlacementAttempts = 0 }).Validate());
         Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { StarCount = 0 }).Validate());
+    }
+
+    private static double PlanarRadius(GalaxyVector3 position) =>
+        Math.Sqrt((position.X * position.X) + (position.Z * position.Z));
+
+    private static double LocalClearanceFactor(
+        GalaxyVector3 position,
+        GalaxyGenerationParameters parameters)
+    {
+        double amount = Math.Clamp(PlanarRadius(position) / parameters.CoreRadius, 0.0, 1.0);
+        double smooth = amount * amount * (3.0 - (2.0 * amount));
+        double coreInfluence = 1.0 - smooth;
+        return 1.0 - ((1.0 - parameters.InnerMinimumDistanceFactor) * coreInfluence);
+    }
+
+    private static int NearestArm(GalaxyVector3 position, GalaxyGenerationParameters parameters)
+    {
+        double radius = PlanarRadius(position);
+        double normalizedRadius = Math.Min(1.0, radius / parameters.Radius);
+        double angle = Math.Atan2(position.Z, position.X);
+        double untwisted = WrapAngle(angle - (parameters.ArmTwistRadians * normalizedRadius));
+        int arm = (int)Math.Round(
+            untwisted / (Math.PI * 2.0) * parameters.SpiralArmCount,
+            MidpointRounding.AwayFromZero);
+        arm %= parameters.SpiralArmCount;
+        return arm < 0 ? arm + parameters.SpiralArmCount : arm;
     }
 
     private static double WrapAngle(double angle)

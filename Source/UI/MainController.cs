@@ -181,7 +181,7 @@ public partial class MainController : Node
 
         _hintLabel.Text = _activeView.Id switch
         {
-            ViewId.Galaxy => "Bal kattintás: csillag kijelölése · F: fókusz",
+            ViewId.Galaxy => "Bal kattintás: kijelölés és fókusz · F: újrafókusz",
             ViewId.System => "Bal kattintás: bolygó kijelölése · F: fókusz",
             ViewId.Planet => "Jobb egér: forgatás · Középső egér: mozgatás · Görgő: zoom",
             _ => string.Empty,

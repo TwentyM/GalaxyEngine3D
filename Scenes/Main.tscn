@@ -78,13 +78,13 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -840.0
+offset_left = -1240.0
 offset_top = -42.0
 offset_right = -20.0
 offset_bottom = -18.0
 grow_horizontal = 0
 grow_vertical = 0
-text = "Jobb egér: forgatás · Középső egér: mozgatás · Görgő: zoom · WASD/QE: fókuszpont · F/Home: fókusz"
+text = "Jobb egér: orbit · Középső egér: pásztázás · Görgő: zoom · WASD/QE: kamera-relatív mozgás · F/Home: fókusz"
 horizontal_alignment = 2
 
 [node name="DeveloperPanel" type="PanelContainer" parent="Hud"]

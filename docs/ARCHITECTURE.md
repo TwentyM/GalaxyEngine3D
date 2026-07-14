@@ -38,9 +38,10 @@ A `Galaxy.Core` sem közvetlenül, sem közvetve nem hivatkozhat a Godot assembl
 
 A `Galaxy.Core` külön .NET 8 C# projekt/assembly, és nincs NuGet- vagy Godot-függősége. Jelenlegi feladatai:
 
-- 64 bites `GalaxySeed`, stabil `StarId` és a 2-es generátorverzió;
+- 64 bites `GalaxySeed`, stabil `StarId` és a 3-as generátorverzió;
 - paraméterezett spirálgalaxis-generálás;
-- exponenciális alapkorong, spirálkar-erősítés és központi dudor additív sűrűségmodellje;
+- exponenciális alapkorong, középpontig futó spirálkar-erősítés és folytonosan vastagodó belső lemez;
+- seedelt, szög- és karfüggő valószínűségi peremfade;
 - a vizuális csillagsugarat is figyelembe vevő, térbeli hash-rácsos minimális távolság;
 - determinisztikus 64 bites hash/keverés és indexenkénti véletlen minták;
 - teljes csillagkatalógus és sorrendfüggetlen index szerinti lekérdezés;
@@ -79,9 +80,11 @@ Követelmények:
 - részlekérdezéskor ugyanaz az eredmény, mint teljes generáláskor;
 - párhuzamos futtatás ne változtassa meg az eredményt.
 
-A 2-es generátorverzió a `GalaxySeed`, egy rögzített szerepkonstans, a generátorverzió és a stabil csillagindex egyértelműen rendezett 64 bites értékeiből SplitMix64-alapú avalanche keveréssel képez csillagseedet és `StarId`-t. Minden véletlen minta a csillagseed, a stabil elhelyezési kísérlet és egy rögzített streamindex tiszta függvénye; nincs megosztott PRNG-állapot. A csillagok stabil indexsorrendben kerülnek elfogadásra, ezért az index szerinti részlekérdezés ugyanazt a prefixet építi fel, mint a teljes katalógus, és ugyanazt a rekordot adja.
+A 3-as generátorverzió a `GalaxySeed`, egy rögzített szerepkonstans, a generátorverzió és a stabil csillagindex egyértelműen rendezett 64 bites értékeiből SplitMix64-alapú avalanche keveréssel képez csillagseedet és `StarId`-t. Minden véletlen minta a csillagseed, a stabil elhelyezési kísérlet és egy rögzített streamindex tiszta függvénye; nincs megosztott PRNG-állapot. A perem szögzajának fázisai és a karhosszak is kizárólag a galaxisseedből és rögzített streamekből származnak. A csillagok stabil indexsorrendben kerülnek elfogadásra, ezért az index szerinti részlekérdezés ugyanazt a prefixet építi fel, mint a teljes katalógus, és ugyanazt a rekordot adja.
 
-Az eloszlás matematikailag három sűrűségkomponens összege: az `InterArmDensityFactor` által súlyozott, tengelyszimmetrikus exponenciális korong biztosítja a ritkább karok közti populációt; az `ArmDensityMultiplier` ugyanerre a radiális profilra keskeny spirálkar-erősítést rak; a `BulgeDensityMultiplier` a központi lapított gömbkomponenst súlyozza. Az elfogadott pozíciókat cellamérethez kötött 3D hash-rács indexeli. Egy új jelölt csak a saját és a közvetlen szomszédos cellákat vizsgálja, a szükséges középponttávolság pedig a két `VisualRadius` és a konfigurált `MinimumStarDistance` összege. A rács nem próbálja meg a perspektivikus billboardátfedéseket megszüntetni.
+Az eloszlás alapja az `InterArmDensityFactor` által súlyozott tengelyszimmetrikus exponenciális korong és az `ArmDensityMultiplier` szerinti spirálkar-erősítés. A karok egészen a nulláig folytatódnak. A `CoreRadius` belsejében egy sima, véges smoothstep profil növeli a sűrűséget, a karok szögszórását és a Z irányú vastagságot; így a szélesedő karok külön gömbszerű komponens vagy nullponti szingularitás nélkül olvadnak össze belső lemezzé. Az `EdgeFadeStart` után a karonként eltérő névleges hossz és a folytonos szögzaj határozza meg a helyi peremet, amelyhez a jelöltek sima valószínűségi fade-del illeszkednek.
+
+Az elfogadott pozíciókat cellamérethez kötött 3D hash-rács indexeli. Egy új jelölt csak a saját és a közvetlen szomszédos cellákat vizsgálja. A szükséges középponttávolság a két `VisualRadius` és a konfigurált `MinimumStarDistance` összege, utóbbit a centrumban az `InnerMinimumDistanceFactor` folytonosan csökkentheti. A rács nem próbálja meg a perspektivikus billboardátfedéseket megszüntetni.
 
 Nem használható determinisztikus azonosítóhoz vagy seedhez `string.GetHashCode()`, `HashCode`, `Random.Shared`, folyamatfüggő hash vagy nem rögzített globális véletlengenerátor. A jelenlegi `PlanetView` névből számított shader-eltolása csak vizuális helyőrző, és a determinisztikus bolygóparaméterek bevezetésekor lecserélendő.
 
@@ -126,7 +129,9 @@ A léptékek közötti nagyságrendi különbség miatt minden nézet lokális, 
 
 A nézetek között nem viszünk át nyers Godot `Transform3D` objektumokat világpozícióként. Stabil objektum-ID és magasabb szintű fókuszkontextus kerül átadásra. Az átmenet közepén a régi jelenet és koordinátatér megszűnik, az új létrejön; ezt a `TransitionController` animációja takarja el.
 
-A kamera mozgásbázisa külön konfigurálható jobb-, előre- és normálvektorból áll. A `WASD` és a nyílbillentyűk ebben a korongsíkban, a `Q`/`E` a normál irányában mozgatják a fókuszt; ezért a vezérlés egy később megdöntött vagy átforgatott galaxisnál sem kötődik a világ fix tengelyeihez.
+A kamera galaxisbázisa külön konfigurálható jobb-, előre- és normálvektorból áll, de a vízszintes mozgás kamera-relatív. A `W`/`S` iránya a kamera előrevektorának galaxis síkjára vetített, normalizált iránya, az `A`/`D` pedig ennek és a síknormálnak stabil keresztszorzata. Ha a vetület közel függőleges nézetnél túl rövid, a vezérlés az utolsó stabil síkbeli előreirányt használja, így nem keletkezik degeneráció vagy váratlan tengelyfordulás. A `Q`/`E` továbbra is a galaxisnormál mentén mozgat.
+
+A fókuszpont sebessége a zoomtávolsággal arányos, a célsebességhez `CameraAcceleration`, nullához `CameraDeceleration` értékkel közelít. A középső egérgomb képernyősíkban pásztáz, a jobb egérgomb orbitál. Csillagkijelölés, `F` és `Home` `FocusDuration` hosszú smoothstep animációt indít; billentyűzetes mozgás, pásztázás, orbit vagy zoom az animációt az aktuális állapot megtartásával megszakítja. A kijelölési animáció nem navigációs művelet, a `SystemView` megnyitásához továbbra is külön aktiválás kell.
 
 ## Kameraállapotok
 
@@ -191,7 +196,7 @@ A `ViewContext` a kiválasztott generált csillagot stabil `StarId` és megjelen
 
 ## Tesztelési határok
 
-- A `Galaxy.Core` tesztjei Godot nélkül ellenőrzik a determinisztikusságot, ujjlenyomatot, inter-arm populációt, minimális felületi távolságot, 50 000 csillagos generálási időt, invariánsokat és sorosítható modelleket.
-- A Godot réteg smoke/integrációs tesztjei a jeleneteket, erőforrás-hivatkozásokat, kijelölést, navigációt és kamera-visszaállítást ellenőrzik.
+- A `Galaxy.Core` tesztjei Godot nélkül ellenőrzik a determinisztikusságot, ujjlenyomatot, inter-arm populációt, belsőlemez-vastagodást, zajos karvégeket, centrumfüggő minimális felületi távolságot, 50 000 csillagos generálási időt, invariánsokat és sorosítható modelleket.
+- A Godot réteg smoke/integrációs tesztjei a jeleneteket, erőforrás-hivatkozásokat, kamera-relatív iránybázist és függőleges fallbacket, megszakítható fókuszanimációt, kijelölést, navigációt és kamera-visszaállítást ellenőrzik.
 - A render backendhez rögzített referencia-adatkészletek és teljesítménymérések szükségesek.
 - A vizuális tesztek nem helyettesíthetik a seedből képzett adatok egzakt összehasonlítását.

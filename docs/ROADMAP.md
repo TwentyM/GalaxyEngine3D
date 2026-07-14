@@ -20,7 +20,9 @@ Elkészült:
 - előre- és visszanavigálás animált, a jelenetcserét elfedő átmenettel;
 - nézetenként mentett kamera-transzformáció, látószög, méret és projekció;
 - nézetenként konfigurálható exponenciális zoomhatárok és fókuszpont körüli orbitkamera;
-- középső egérgombos képernyősíkbeli mozgatás, galaxisrelatív `WASD`/nyíl/`Q`/`E` fókuszmozgatás, `F` és `Home` fókuszművelet;
+- kamera-előreirány síkvetítésére épülő `WASD`/nyíl navigáció stabil függőleges fallbackkel, zoomarányos sebességgel, gyorsítással és lassítással;
+- középső egérgombos képernyősíkbeli pásztázás, jobb egérgombos orbit, valamint galaxisnormál menti `Q`/`E` fókuszmozgatás;
+- megszakítható kijelölési fókuszanimáció, `F` újrafókusz és `Home` középponti fókusz, automatikus nézetnyitás nélkül;
 - a fókuszpontot is megőrző nézetenkénti kameraállapot;
 - a kijelölt csillag vagy bolygó tényleges pozícióját követő, teljesen elfedett előre irányú nézetátmenet;
 - C# build és headless runtime smoke teszt.
@@ -34,16 +36,18 @@ Cél: a `Galaxy.Core` motorfüggetlen C# réteg és a reprodukálható galaxisad
 Elkészült:
 
 - külön `Galaxy.Core` projekt Godot-hivatkozás nélkül;
-- 64 bites `GalaxySeed`, 2-es generátorverzió és rögzített, platformfüggetlen 64 bites keverési stratégia;
+- 64 bites `GalaxySeed`, 3-as generátorverzió és rögzített, platformfüggetlen 64 bites keverési stratégia;
 - stabil `StarId`, amely a seedből, szerepkonstansból és stabil csillagindexből származik;
-- paraméterezhető spirálprofil: karszám, sugár, korongvastagság, dudorméret, csavarodás és csillagszám;
-- exponenciális alapkorong és erre rakódó, külön `InterArmDensityFactor`, `ArmDensityMultiplier` és `BulgeDensityMultiplier` értékkel szabályozható sűrűségkomponensek;
+- paraméterezhető spirálprofil: karszám, sugár, korongvastagság, csavarodás és csillagszám;
+- a középpontig futó karokból összeolvadó, véges sűrűségű belső lemez külön gömbszerű dudor nélkül;
+- `InnerDensityMultiplier`, `InnerThicknessMultiplier`, `InnerArmWidthMultiplier` és `CoreRadius` által szabályozott folytonos belső profil;
+- `EdgeFadeStart` után seedelt szögzajjal és karonként eltérő hosszal működő valószínűségi peremfade;
 - konfigurálható minimális felületi csillagtávolság, amely a generált vizuális sugarat is figyelembe veszi;
 - stabil indexsorrendű, lokális 3D hash-rácsos szomszédkeresés négyzetes teljes katalógus-bejárás nélkül;
 - motorfüggetlen csillagpozíció, hőmérséklet, fényesség és vizuális sugár;
 - teljes katalógus és sorrendfüggetlen, index szerinti csillaglekérdezés;
 - reprodukálhatósági, sorrendfüggetlenségi, tartomány- és rögzített ujjlenyomat-tesztek;
-- inter-arm eloszlási, minimális távolság- és 50 000 csillagos generálási teljesítménytesztek;
+- inter-arm, belsőlemez-vastagodási, zajos karvég-, minimális távolság- és 50 000 csillagos teljesítménytesztek;
 - kezdeti Godot MultiMesh-adapter 50 000 csillaghoz, csillagonkénti node-ok nélkül;
 - analitikus sugártesztes kijelölés és stabil `StarId` átadása a `SystemView` kontextusába.
 
@@ -73,7 +77,7 @@ Cél: a GPU-n megjelenített csillagok stabil azonosító alapján kijelölhető
 Tervezett eredmények (a stabil ID-alapú analitikus alapkijelölés már működik):
 
 - a jelenlegi lineáris analitikus sugárteszt skálázása térbeli indexszel vagy GPU ID-bufferrel;
-- kijelöléshez fókuszálás és részletesebb csillaginformációk;
+- a már működő kijelölési fókuszanimáció kibővítése részletesebb csillaginformációkkal;
 - a csillag stabil azonosítójából származtatott `SystemSeed`;
 - motorfüggetlen csillagrendszer-modell és igény szerinti rendszer-generálás;
 - a már működő stabil ID-alapú `GalaxyView` → `SystemView` kontextusátadás kiterjesztése generált rendszeradatra.
