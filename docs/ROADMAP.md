@@ -19,7 +19,11 @@ Elkészült:
 - helyőrző csillag- és bolygókijelölés;
 - előre- és visszanavigálás animált, a jelenetcserét elfedő átmenettel;
 - nézetenként mentett kamera-transzformáció, látószög, méret és projekció;
-- orbitkamera, C# build és headless runtime smoke teszt.
+- nézetenként konfigurálható exponenciális zoomhatárok és fókuszpont körüli orbitkamera;
+- középső egérgombos képernyősíkbeli mozgatás, galaxisrelatív `WASD`/nyíl/`Q`/`E` fókuszmozgatás, `F` és `Home` fókuszművelet;
+- a fókuszpontot is megőrző nézetenkénti kameraállapot;
+- a kijelölt csillag vagy bolygó tényleges pozícióját követő, teljesen elfedett előre irányú nézetátmenet;
+- C# build és headless runtime smoke teszt.
 
 Kilépési feltétel: mindhárom nézet oda-vissza bejárható, a kameraállapotok visszaállnak, a projekt Godot 4.7 .NET alatt hibamentesen indul.
 
@@ -30,12 +34,16 @@ Cél: a `Galaxy.Core` motorfüggetlen C# réteg és a reprodukálható galaxisad
 Elkészült:
 
 - külön `Galaxy.Core` projekt Godot-hivatkozás nélkül;
-- 64 bites `GalaxySeed`, 1-es generátorverzió és rögzített, platformfüggetlen 64 bites keverési stratégia;
+- 64 bites `GalaxySeed`, 2-es generátorverzió és rögzített, platformfüggetlen 64 bites keverési stratégia;
 - stabil `StarId`, amely a seedből, szerepkonstansból és stabil csillagindexből származik;
 - paraméterezhető spirálprofil: karszám, sugár, korongvastagság, dudorméret, csavarodás és csillagszám;
-- motorfüggetlen csillagpozíció, hőmérséklet és fényesség;
+- exponenciális alapkorong és erre rakódó, külön `InterArmDensityFactor`, `ArmDensityMultiplier` és `BulgeDensityMultiplier` értékkel szabályozható sűrűségkomponensek;
+- konfigurálható minimális felületi csillagtávolság, amely a generált vizuális sugarat is figyelembe veszi;
+- stabil indexsorrendű, lokális 3D hash-rácsos szomszédkeresés négyzetes teljes katalógus-bejárás nélkül;
+- motorfüggetlen csillagpozíció, hőmérséklet, fényesség és vizuális sugár;
 - teljes katalógus és sorrendfüggetlen, index szerinti csillaglekérdezés;
 - reprodukálhatósági, sorrendfüggetlenségi, tartomány- és rögzített ujjlenyomat-tesztek;
+- inter-arm eloszlási, minimális távolság- és 50 000 csillagos generálási teljesítménytesztek;
 - kezdeti Godot MultiMesh-adapter 50 000 csillaghoz, csillagonkénti node-ok nélkül;
 - analitikus sugártesztes kijelölés és stabil `StarId` átadása a `SystemView` kontextusába.
 
@@ -124,7 +132,7 @@ Tervezett eredmények:
 
 - CPU-, GPU-, memória- és streamelési profilok reprezentatív jelenetekhez;
 - allokációk, culling, bufferfrissítés és shaderköltségek optimalizálása;
-- finomított galaxis → csillagrendszer és rendszer → bolygó átvezetés;
+- a már működő, kijelölt objektumot követő galaxis → csillagrendszer és rendszer → bolygó átvezetés vizuális finomítása;
 - az animáció közepén végzett jelenet- és koordinátaváltás teljes elfedése;
 - megszakítható vagy védett navigáció, töltési hibák kezelése és vizuális fallback;
 - Windows build- és teljesítményellenőrzési folyamat.

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Godot;
-using GalaxyEngine3D.Camera;
 using GalaxyEngine3D.Core;
 using GalaxyEngine3D.Views;
 
@@ -19,6 +18,12 @@ public partial class ViewRouter : Node3D
 
     public ViewContext Context { get; } = new();
 
+    public ViewSelectionTarget? NavigationTarget { get; private set; }
+
+    public string? SelectedObjectId => NavigationTarget?.ObjectId;
+
+    public Vector3? SelectedObjectPosition => NavigationTarget?.Position;
+
     public event Action<GameView>? CurrentViewChanged;
 
     public void Initialize()
@@ -34,6 +39,11 @@ public partial class ViewRouter : Node3D
         }
     }
 
+    public void ReceiveSelectedObject(ViewSelectionTarget? target)
+    {
+        NavigationTarget = target;
+    }
+
     public void SwitchTo(ViewId target)
     {
         PackedScene scene = GetScene(target);
@@ -44,6 +54,8 @@ public partial class ViewRouter : Node3D
             CurrentView.Free();
         }
 
+        NavigationTarget = null;
+
         GameView nextView = scene.Instantiate<GameView>();
         nextView.Configure(Context);
         AddChild(nextView);
@@ -52,10 +64,6 @@ public partial class ViewRouter : Node3D
         if (_cameraStates.TryGetValue(target, out CameraState cameraState))
         {
             cameraState.Restore(nextView.Camera);
-            if (nextView.Camera is OrbitCameraController orbitCamera)
-            {
-                orbitCamera.SynchronizeFromTransform();
-            }
         }
 
         CurrentViewChanged?.Invoke(nextView);

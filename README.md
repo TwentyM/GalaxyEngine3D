@@ -17,7 +17,9 @@ A `Main` jelenetben a `ViewRouter` külön példányosítja a három nézetet:
 - `SystemView`: egy csillag és három kijelölhető helyőrző bolygó;
 - `PlanetView`: körbeforgatható bolygó egyszerű procedurális shaderrel.
 
-A bal egérgomb kijelöl, a jobb egérgombbal húzva a kamera kering, a görgő zoomol. A galaxisszintű kijelölés analitikus sugártesztet használ, csillagonkénti node vagy collider nélkül. A HUD gombjai nyitják meg a következő nézetet és lépnek vissza. A nézetcsere közben a `TransitionController` kamera-zoommal és fényvillanással takarja el a jelenet- és koordinátaváltást. A `ViewRouter` nézetenként elmenti és visszaállítja a kameraállapotot. A fejlesztői panel a seedet, csillagszámot, spirálkarok számát és az FPS-t mutatja.
+A bal egérgomb kijelöl, a jobb egérgombbal húzva a kamera az aktuális fókuszpont körül kering, a középső egérgomb húzása pedig a kamera képernyősíkjában mozgatja a fókuszt. A görgő exponenciálisan zoomol. A `WASD` és a nyílbillentyűk a galaxis korongjának relatív síkjában, a `Q`/`E` arra merőlegesen mozgatják a fókuszt; `F` a kijelölt objektumra, `Home` a nézet középpontjára fókuszál. A galaxisszintű kijelölés analitikus sugártesztet használ, csillagonkénti node vagy collider nélkül.
+
+A HUD gombjai nyitják meg a következő nézetet és lépnek vissza. Előrelépés csak érvényes kijelöléssel indul: a kamera a kijelölt csillag vagy bolygó tényleges pozíciójára közelít, majd a képet kitöltő objektum és fényvillanás alatt történik a jelenet- és koordinátaváltás. A `ViewRouter` nézetenként a fókuszponttal együtt menti és állítja vissza a kameraállapotot. A fejlesztői panel a seedet, csillagszámot, spirálkarok számát és az FPS-t mutatja.
 
 ## Architektúra
 
@@ -34,7 +36,7 @@ Main
 Galaxy.Core                   Godot-független seedek, stabil ID-k és generálás
 ```
 
-A `Galaxy.Core` külön .NET 8 projekt, és nem hivatkozik Godotra. A verziózott spirálgenerátor 64 bites `GalaxySeed`, rögzített 64 bites keverés és stabil csillagindex alapján állítja elő a katalógust. A Godot-réteg ezt renderadattá alakítja, de nem módosítja a procedurális eredményt. Compute shader, köd, bolygógenerálás és végleges grafika még nincs a prototípusban.
+A `Galaxy.Core` külön .NET 8 projekt, és nem hivatkozik Godotra. A 2-es verziójú spirálgenerátor 64 bites `GalaxySeed`, rögzített 64 bites keverés és stabil csillagindex alapján állítja elő a katalógust. Az eloszlás exponenciális alapkorongból, karerősítésből és központi dudorból áll; a csillagok vizuális sugarát is figyelembe vevő minimális távolságot determinisztikus térbeli hash-rács ellenőrzi. A Godot-réteg ezt renderadattá alakítja, de nem módosítja a procedurális eredményt. Compute shader, köd, bolygógenerálás és végleges grafika még nincs a prototípusban.
 
 ## Indítás és ellenőrzés
 

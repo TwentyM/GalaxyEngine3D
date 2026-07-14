@@ -88,9 +88,11 @@ script = ExtResource("1_view")
 position = Vector3(0, 9, 22)
 current = true
 script = ExtResource("2_camera")
-MinimumDistance = 8.0
-MaximumDistance = 45.0
-ZoomStep = 1.8
+MinimumDistance = 1.4
+MaximumDistance = 60.0
+ZoomExponent = 0.16
+PanSpeedFactor = 0.0014
+KeyboardMoveSpeedFactor = 0.75
 
 [node name="ContextLabel" type="Label3D" parent="."]
 position = Vector3(0, 3.0, 0)

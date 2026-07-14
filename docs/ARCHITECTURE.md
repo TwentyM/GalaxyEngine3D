@@ -38,11 +38,13 @@ A `Galaxy.Core` sem közvetlenül, sem közvetve nem hivatkozhat a Godot assembl
 
 A `Galaxy.Core` külön .NET 8 C# projekt/assembly, és nincs NuGet- vagy Godot-függősége. Jelenlegi feladatai:
 
-- 64 bites `GalaxySeed`, stabil `StarId` és az 1-es generátorverzió;
+- 64 bites `GalaxySeed`, stabil `StarId` és a 2-es generátorverzió;
 - paraméterezett spirálgalaxis-generálás;
+- exponenciális alapkorong, spirálkar-erősítés és központi dudor additív sűrűségmodellje;
+- a vizuális csillagsugarat is figyelembe vevő, térbeli hash-rácsos minimális távolság;
 - determinisztikus 64 bites hash/keverés és indexenkénti véletlen minták;
 - teljes csillagkatalógus és sorrendfüggetlen index szerinti lekérdezés;
-- saját `GalaxyVector3` értéktípus, csillaghőmérséklet és fényesség;
+- saját `GalaxyVector3` értéktípus, csillaghőmérséklet, fényesség és vizuális sugár;
 - Godot nélkül futó unit- és reprodukálhatósági tesztek.
 
 A régió-, rendszer-, bolygó-, hold- és gyűrűmodellek későbbi mérföldkövekben bővítik ezt a réteget.
@@ -77,7 +79,9 @@ Követelmények:
 - részlekérdezéskor ugyanaz az eredmény, mint teljes generáláskor;
 - párhuzamos futtatás ne változtassa meg az eredményt.
 
-Az első generátorverzió a `GalaxySeed`, egy rögzített szerepkonstans, a generátorverzió és a stabil csillagindex egyértelműen rendezett 64 bites értékeiből SplitMix64-alapú avalanche keveréssel képez csillagseedet és `StarId`-t. Minden véletlen minta a csillagseed és egy rögzített streamindex tiszta függvénye; nincs megosztott PRNG-állapot. Emiatt az index szerinti részlekérdezés és a teljes katalógus ugyanazt a rekordot adja.
+A 2-es generátorverzió a `GalaxySeed`, egy rögzített szerepkonstans, a generátorverzió és a stabil csillagindex egyértelműen rendezett 64 bites értékeiből SplitMix64-alapú avalanche keveréssel képez csillagseedet és `StarId`-t. Minden véletlen minta a csillagseed, a stabil elhelyezési kísérlet és egy rögzített streamindex tiszta függvénye; nincs megosztott PRNG-állapot. A csillagok stabil indexsorrendben kerülnek elfogadásra, ezért az index szerinti részlekérdezés ugyanazt a prefixet építi fel, mint a teljes katalógus, és ugyanazt a rekordot adja.
+
+Az eloszlás matematikailag három sűrűségkomponens összege: az `InterArmDensityFactor` által súlyozott, tengelyszimmetrikus exponenciális korong biztosítja a ritkább karok közti populációt; az `ArmDensityMultiplier` ugyanerre a radiális profilra keskeny spirálkar-erősítést rak; a `BulgeDensityMultiplier` a központi lapított gömbkomponenst súlyozza. Az elfogadott pozíciókat cellamérethez kötött 3D hash-rács indexeli. Egy új jelölt csak a saját és a közvetlen szomszédos cellákat vizsgálja, a szükséges középponttávolság pedig a két `VisualRadius` és a konfigurált `MinimumStarDistance` összege. A rács nem próbálja meg a perspektivikus billboardátfedéseket megszüntetni.
 
 Nem használható determinisztikus azonosítóhoz vagy seedhez `string.GetHashCode()`, `HashCode`, `Random.Shared`, folyamatfüggő hash vagy nem rögzített globális véletlengenerátor. A jelenlegi `PlanetView` névből számított shader-eltolása csak vizuális helyőrző, és a determinisztikus bolygóparaméterek bevezetésekor lecserélendő.
 
@@ -122,6 +126,8 @@ A léptékek közötti nagyságrendi különbség miatt minden nézet lokális, 
 
 A nézetek között nem viszünk át nyers Godot `Transform3D` objektumokat világpozícióként. Stabil objektum-ID és magasabb szintű fókuszkontextus kerül átadásra. Az átmenet közepén a régi jelenet és koordinátatér megszűnik, az új létrejön; ezt a `TransitionController` animációja takarja el.
 
+A kamera mozgásbázisa külön konfigurálható jobb-, előre- és normálvektorból áll. A `WASD` és a nyílbillentyűk ebben a korongsíkban, a `Q`/`E` a normál irányában mozgatják a fókuszt; ezért a vezérlés egy később megdöntött vagy átforgatott galaxisnál sem kötődik a világ fix tengelyeihez.
+
 ## Kameraállapotok
 
 A jelenlegi `ViewRouter` nézetenként `CameraState` értéket tárol. Ez tartalmazza:
@@ -129,9 +135,10 @@ A jelenlegi `ViewRouter` nézetenként `CameraState` értéket tárol. Ez tartal
 - a kamera lokális `Transform3D` értékét;
 - a látószöget (`Fov`);
 - az ortografikus méretet (`Size`);
-- a projekció típusát.
+- a projekció típusát;
+- az orbitkamera aktuális `CameraFocusPosition` fókuszpontját.
 
-Navigáció előtt a router rögzíti az aktuális állapotot. Visszatéréskor az újonnan példányosított nézet kamerája megkapja a mentett értékeket, majd az orbitkamera belső szögei és távolsága újraszinkronizálódnak.
+Navigáció előtt a router rögzíti az aktuális állapotot. Visszatéréskor az újonnan példányosított nézet kamerája megkapja a mentett értékeket és fókuszpontot, majd az orbitkamera belső szögei és távolsága újraszinkronizálódnak. A zoom távolsága minden görgőlépésnél exponenciális szorzóval változik és a nézet saját minimuma/maximuma közé szorul; a minimum mindig pozitív és a near sík előtt marad, ezért a kamera nem haladhat át a fókuszponton. A képkockánkénti billentyűzetes fókuszmozgatás `delta` idővel skálázott.
 
 Később eldönthető, hogy egyetlen állapot tartozzon-e nézettípusonként, vagy a `SystemView` és `PlanetView` kamerája stabil objektum-ID szerint is gyorsítótárazódjon. Ez prezentációs állapot, ezért nem része a `Galaxy.Core` világgenerálásnak.
 
@@ -174,16 +181,17 @@ A konkrét GPU-reprezentáció nem szivároghat vissza a `Galaxy.Core` modelljei
 
 1. A `MainController` fogadja a HUD-műveletet.
 2. A `ViewRouter` elmenti az aktuális kameraállapotot.
-3. A `TransitionController` a kamerát a fókusz felé zoomolja, és fényátmenetet jelenít meg.
-4. Az animáció fedett pontján a router lecseréli a `GameView` példányt.
-5. Az új nézet megkapja a `ViewContext` kijelölési kontextusát és korábbi kameraállapotát.
-6. Az átmenet felfedi az új, saját koordinátaterű jelenetet.
+3. Előrelépéskor a `ViewRouter` megkapja a kijelölt objektum stabil azonosítóját és az aktuális nézetbeli pozícióját; érvényes cél nélkül a művelet leáll.
+4. A `TransitionController` minden animációs mintánál újra lekéri a cél pozícióját, a kamera fókuszát oda interpolálja, exponenciálisan közelít, és fényátmenetet jelenít meg.
+5. Amikor a csillag vagy bolygó képe és az átfedő fény teljesen takarja a képet, a router lecseréli a `GameView` példányt.
+6. Az új nézet megkapja a `ViewContext` stabil ID-alapú kijelölési kontextusát és korábbi kameraállapotát; a forrásnézet lokális pozíciója nem kerül át az új koordinátatérbe.
+7. Az átmenet felfedi az új, saját koordinátaterű jelenetet.
 
-A `ViewContext` a kiválasztott generált csillagot stabil `StarId` és megjelenítési név formájában adja át. A bolygók még helyőrző nevet használnak; a későbbi rendszer- és bolygógeneráláskor `PlanetId` lesz az elsődleges hivatkozás.
+A `ViewContext` a kiválasztott generált csillagot stabil `StarId` és megjelenítési név formájában adja át. A bolygók még helyőrző ID-t és nevet használnak; a későbbi rendszer- és bolygógeneráláskor `PlanetId` lesz az elsődleges hivatkozás. Az átmenethez használt `ViewSelectionTarget` rövid életű prezentációs objektum: ID-t, pillanatnyi pozíciószolgáltatót és takarási sugarat ad a routernek, de nem része a procedurális modellnek.
 
 ## Tesztelési határok
 
-- A `Galaxy.Core` tesztjei Godot nélkül ellenőrzik a determinisztikusságot, invariánsokat és sorosítható modelleket.
+- A `Galaxy.Core` tesztjei Godot nélkül ellenőrzik a determinisztikusságot, ujjlenyomatot, inter-arm populációt, minimális felületi távolságot, 50 000 csillagos generálási időt, invariánsokat és sorosítható modelleket.
 - A Godot réteg smoke/integrációs tesztjei a jeleneteket, erőforrás-hivatkozásokat, kijelölést, navigációt és kamera-visszaállítást ellenőrzik.
 - A render backendhez rögzített referencia-adatkészletek és teljesítménymérések szükségesek.
 - A vizuális tesztek nem helyettesíthetik a seedből képzett adatok egzakt összehasonlítását.

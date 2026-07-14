@@ -42,9 +42,11 @@ script = ExtResource("1_view")
 position = Vector3(0, 10, 19)
 current = true
 script = ExtResource("2_camera")
-MinimumDistance = 7.0
-MaximumDistance = 50.0
-ZoomStep = 1.8
+MinimumDistance = 0.12
+MaximumDistance = 80.0
+ZoomExponent = 0.16
+PanSpeedFactor = 0.0012
+KeyboardMoveSpeedFactor = 0.7
 
 [node name="Stars" type="MultiMeshInstance3D" parent="."]
 multimesh = SubResource("MultiMesh_stars")

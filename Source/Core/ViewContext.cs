@@ -9,4 +9,6 @@ public sealed class ViewContext
     public string? SelectedStarName { get; set; }
 
     public string? SelectedPlanetName { get; set; }
+
+    public string? SelectedPlanetId { get; set; }
 }

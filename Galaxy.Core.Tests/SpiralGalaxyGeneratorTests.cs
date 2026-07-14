@@ -1,5 +1,6 @@
 using Galaxy.Core;
 using Galaxy.Core.Generation;
+using System.Diagnostics;
 using Xunit;
 
 namespace Galaxy.Core.Tests;
@@ -13,6 +14,11 @@ public sealed class SpiralGalaxyGeneratorTests
         DiskThickness = 0.8,
         BulgeRadius = 2.0,
         ArmTwistRadians = 4.5,
+        DiskScaleLength = 2.4,
+        InterArmDensityFactor = 0.35,
+        ArmDensityMultiplier = 1.5,
+        BulgeDensityMultiplier = 1.8,
+        MinimumStarDistance = 0.006,
         StarCount = 512,
     };
 
@@ -71,7 +77,82 @@ public sealed class SpiralGalaxyGeneratorTests
             Assert.InRange(Math.Abs(star.Position.Y), 0.0, Math.Max(Parameters.DiskThickness, Parameters.BulgeRadius * 0.65) + 1e-12);
             Assert.InRange(star.TemperatureKelvin, 2_500.0f, 12_000.0f);
             Assert.True(star.Luminosity > 0.0f);
+            Assert.InRange(star.VisualRadius, 0.0275f, 0.045f);
         }
+    }
+
+    [Fact]
+    public void StarsRespectConfiguredSurfaceClearance()
+    {
+        SpiralGalaxyGenerator generator = new();
+        GeneratedGalaxy galaxy = generator.Generate(new GalaxySeed(0x5EEDUL), Parameters);
+
+        for (int firstIndex = 0; firstIndex < galaxy.Stars.Count; firstIndex++)
+        {
+            GalaxyStar first = galaxy.Stars[firstIndex];
+            for (int secondIndex = firstIndex + 1; secondIndex < galaxy.Stars.Count; secondIndex++)
+            {
+                GalaxyStar second = galaxy.Stars[secondIndex];
+                double dx = first.Position.X - second.Position.X;
+                double dy = first.Position.Y - second.Position.Y;
+                double dz = first.Position.Z - second.Position.Z;
+                double distance = Math.Sqrt((dx * dx) + (dy * dy) + (dz * dz));
+                double required = Parameters.MinimumStarDistance + first.VisualRadius + second.VisualRadius;
+
+                Assert.True(distance + 1e-12 >= required,
+                    $"Stars {firstIndex} and {secondIndex} overlap: {distance} < {required}.");
+            }
+        }
+    }
+
+    [Fact]
+    public void ExponentialDiskIncludesInterArmStars()
+    {
+        GalaxyGenerationParameters diskOnly = Parameters with
+        {
+            BulgeRadius = 0.0,
+            BulgeDensityMultiplier = 0.0,
+            InterArmDensityFactor = 1.0,
+            ArmDensityMultiplier = 2.0,
+            StarCount = 4_096,
+        };
+        GeneratedGalaxy galaxy = new SpiralGalaxyGenerator().Generate(new GalaxySeed(0xA11CEUL), diskOnly);
+        int clearlyBetweenArms = 0;
+
+        foreach (GalaxyStar star in galaxy.Stars)
+        {
+            double radius = Math.Sqrt((star.Position.X * star.Position.X) + (star.Position.Z * star.Position.Z));
+            double angle = Math.Atan2(star.Position.Z, star.Position.X);
+            double twist = diskOnly.ArmTwistRadians * (radius / diskOnly.Radius);
+            double nearestArmDistance = double.PositiveInfinity;
+
+            for (int arm = 0; arm < diskOnly.SpiralArmCount; arm++)
+            {
+                double armAngle = (Math.PI * 2.0 * arm / diskOnly.SpiralArmCount) + twist;
+                nearestArmDistance = Math.Min(nearestArmDistance, Math.Abs(WrapAngle(angle - armAngle)));
+            }
+
+            if (nearestArmDistance > 0.6)
+            {
+                clearlyBetweenArms++;
+            }
+        }
+
+        Assert.True(clearlyBetweenArms >= 80,
+            $"Expected a sparse inter-arm population, found only {clearlyBetweenArms} stars.");
+    }
+
+    [Fact]
+    public void FiftyThousandStarsGenerateWithinInteractiveBudget()
+    {
+        GalaxyGenerationParameters large = Parameters with { StarCount = 50_000 };
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        GeneratedGalaxy galaxy = new SpiralGalaxyGenerator().Generate(new GalaxySeed(0xC0FFEEUL), large);
+        stopwatch.Stop();
+
+        Assert.Equal(50_000, galaxy.Stars.Count);
+        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(15),
+            $"50,000-star generation took {stopwatch.Elapsed.TotalSeconds:F2} seconds.");
     }
 
     [Fact]
@@ -89,9 +170,10 @@ public sealed class SpiralGalaxyGeneratorTests
             fingerprint = Fnv1A(fingerprint, (ulong)BitConverter.DoubleToInt64Bits(star.Position.Z));
             fingerprint = Fnv1A(fingerprint, BitConverter.SingleToUInt32Bits(star.TemperatureKelvin));
             fingerprint = Fnv1A(fingerprint, BitConverter.SingleToUInt32Bits(star.Luminosity));
+            fingerprint = Fnv1A(fingerprint, BitConverter.SingleToUInt32Bits(star.VisualRadius));
         }
 
-        Assert.Equal(6_494_796_118_537_854_448UL, fingerprint);
+        Assert.Equal(6_885_551_133_730_373_599UL, fingerprint);
     }
 
     [Fact]
@@ -102,7 +184,36 @@ public sealed class SpiralGalaxyGeneratorTests
         Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { DiskThickness = -0.1 }).Validate());
         Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { BulgeRadius = 9.0 }).Validate());
         Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { ArmTwistRadians = double.NaN }).Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { DiskScaleLength = 0.0 }).Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { InterArmDensityFactor = -0.1 }).Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { ArmDensityMultiplier = -0.1 }).Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { BulgeDensityMultiplier = -0.1 }).Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with
+        {
+            BulgeRadius = 0.0,
+            InterArmDensityFactor = 0.0,
+            ArmDensityMultiplier = 0.0,
+            BulgeDensityMultiplier = 1.0,
+        }).Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { MinimumStarDistance = -0.1 }).Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { MaxPlacementAttempts = 0 }).Validate());
         Assert.Throws<ArgumentOutOfRangeException>(() => (Parameters with { StarCount = 0 }).Validate());
+    }
+
+    private static double WrapAngle(double angle)
+    {
+        double tau = Math.PI * 2.0;
+        angle %= tau;
+        if (angle > Math.PI)
+        {
+            angle -= tau;
+        }
+        else if (angle < -Math.PI)
+        {
+            angle += tau;
+        }
+
+        return angle;
     }
 
     private static ulong Fnv1A(ulong hash, ulong value)

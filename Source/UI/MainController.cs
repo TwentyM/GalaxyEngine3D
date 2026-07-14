@@ -62,6 +62,7 @@ public partial class MainController : Node
 
         _activeView = view;
         _activeView.SelectionChanged += OnSelectionChanged;
+        _router.ReceiveSelectedObject(view.SelectedTarget);
         if (view is GalaxyView galaxyView)
         {
             _galaxySeed = galaxyView.Seed.Value;
@@ -74,15 +75,19 @@ public partial class MainController : Node
 
     private void OnSelectionChanged(string? selectionName)
     {
+        _router.ReceiveSelectedObject(_activeView?.SelectedTarget);
+
         if (_activeView?.Id == ViewId.Galaxy)
         {
             _router.Context.SelectedStarId = (_activeView as GalaxyView)?.SelectedStarId;
             _router.Context.SelectedStarName = selectionName;
             _router.Context.SelectedPlanetName = null;
+            _router.Context.SelectedPlanetId = null;
         }
         else if (_activeView?.Id == ViewId.System)
         {
             _router.Context.SelectedPlanetName = selectionName;
+            _router.Context.SelectedPlanetId = _activeView.SelectedTarget?.ObjectId;
         }
 
         RefreshHud();
@@ -125,13 +130,28 @@ public partial class MainController : Node
             return;
         }
 
+        bool enteringChildView =
+            (_activeView.Id == ViewId.Galaxy && target == ViewId.System) ||
+            (_activeView.Id == ViewId.System && target == ViewId.Planet);
+        ViewSelectionTarget? transitionTarget = enteringChildView
+            ? _activeView.SelectedTarget
+            : null;
+        if (enteringChildView && transitionTarget is null)
+        {
+            return;
+        }
+
+        _router.ReceiveSelectedObject(transitionTarget);
         _navigationLocked = true;
         _router.CaptureCurrentCameraState();
         RefreshHud();
 
         try
         {
-            await _transition.PlayAsync(_activeView.Camera, () => _router.SwitchTo(target));
+            await _transition.PlayAsync(
+                _activeView.Camera,
+                transitionTarget,
+                () => _router.SwitchTo(target));
         }
         finally
         {
@@ -161,9 +181,9 @@ public partial class MainController : Node
 
         _hintLabel.Text = _activeView.Id switch
         {
-            ViewId.Galaxy => "Bal kattintás: csillag kijelölése",
-            ViewId.System => "Bal kattintás: bolygó kijelölése",
-            ViewId.Planet => "Jobb egérgomb: forgatás · Görgő: zoom",
+            ViewId.Galaxy => "Bal kattintás: csillag kijelölése · F: fókusz",
+            ViewId.System => "Bal kattintás: bolygó kijelölése · F: fókusz",
+            ViewId.Planet => "Jobb egér: forgatás · Középső egér: mozgatás · Görgő: zoom",
             _ => string.Empty,
         };
 

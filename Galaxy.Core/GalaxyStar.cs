@@ -5,4 +5,5 @@ public readonly record struct GalaxyStar(
     int StableIndex,
     GalaxyVector3 Position,
     float TemperatureKelvin,
-    float Luminosity);
+    float Luminosity,
+    float VisualRadius);

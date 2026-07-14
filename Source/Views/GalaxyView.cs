@@ -14,6 +14,11 @@ public partial class GalaxyView : GameView
     [Export(PropertyHint.Range, "0.0,20.0,0.05")] public float DiskThickness { get; set; } = 0.8f;
     [Export(PropertyHint.Range, "0.0,50.0,0.1")] public float BulgeRadius { get; set; } = 2.0f;
     [Export(PropertyHint.Range, "-12.0,12.0,0.1")] public float ArmTwistRadians { get; set; } = 4.5f;
+    [Export(PropertyHint.Range, "0.1,50.0,0.1")] public float DiskScaleLength { get; set; } = 2.4f;
+    [Export(PropertyHint.Range, "0.0,10.0,0.05")] public float InterArmDensityFactor { get; set; } = 0.35f;
+    [Export(PropertyHint.Range, "0.0,10.0,0.05")] public float ArmDensityMultiplier { get; set; } = 1.5f;
+    [Export(PropertyHint.Range, "0.0,10.0,0.05")] public float BulgeDensityMultiplier { get; set; } = 1.8f;
+    [Export(PropertyHint.Range, "0.0,1.0,0.001")] public float MinimumStarDistance { get; set; } = 0.006f;
     [Export(PropertyHint.Range, "1,500000,1")] public int StarCount { get; set; } = 50_000;
     [Export(PropertyHint.Range, "0.01,1.0,0.01")] public float PickRadius { get; set; } = 0.16f;
 
@@ -51,6 +56,11 @@ public partial class GalaxyView : GameView
             DiskThickness = DiskThickness,
             BulgeRadius = BulgeRadius,
             ArmTwistRadians = ArmTwistRadians,
+            DiskScaleLength = DiskScaleLength,
+            InterArmDensityFactor = InterArmDensityFactor,
+            ArmDensityMultiplier = ArmDensityMultiplier,
+            BulgeDensityMultiplier = BulgeDensityMultiplier,
+            MinimumStarDistance = MinimumStarDistance,
             StarCount = StarCount,
         };
 
@@ -61,6 +71,11 @@ public partial class GalaxyView : GameView
 
     public override void _UnhandledInput(InputEvent inputEvent)
     {
+        if (HandleCameraFocusInput(inputEvent))
+        {
+            return;
+        }
+
         if (inputEvent is not InputEventMouseButton mouseButton ||
             mouseButton.ButtonIndex != MouseButton.Left ||
             !mouseButton.Pressed ||
@@ -91,6 +106,16 @@ public partial class GalaxyView : GameView
         return ToGodot(_galaxy.Stars[stableIndex].Position);
     }
 
+    public float GetStarVisualRadius(int stableIndex)
+    {
+        if (_galaxy is null || (uint)stableIndex >= (uint)_galaxy.Stars.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(stableIndex));
+        }
+
+        return _galaxy.Stars[stableIndex].VisualRadius;
+    }
+
     private void BuildMultiMesh(GeneratedGalaxy galaxy)
     {
         MultiMesh multiMesh = new()
@@ -105,7 +130,7 @@ public partial class GalaxyView : GameView
         for (int index = 0; index < galaxy.Stars.Count; index++)
         {
             GalaxyStar star = galaxy.Stars[index];
-            float scale = 0.055f + (0.035f * Mathf.Clamp(star.Luminosity / 4.0f, 0.0f, 1.0f));
+            float scale = star.VisualRadius * 2.0f;
             Basis basis = Basis.Identity.Scaled(Vector3.One * scale);
             multiMesh.SetInstanceTransform(index, new Transform3D(basis, ToGodot(star.Position)));
             multiMesh.SetInstanceColor(index, TemperatureToColor(star.TemperatureKelvin));
@@ -166,9 +191,14 @@ public partial class GalaxyView : GameView
 
         GalaxyStar star = _galaxy.Stars[stableIndex];
         SelectedStarId = star.Id;
-        _selectionMarker.Position = ToGodot(star.Position);
+        Vector3 localPosition = ToGodot(star.Position);
+        _selectionMarker.Position = localPosition;
         _selectionMarker.Visible = true;
-        SetSelectionName($"Csillag {star.Id}");
+        SetSelectionTarget(
+            star.Id.Value.ToString("X16"),
+            $"Csillag {star.Id}",
+            () => ToGlobal(localPosition),
+            star.VisualRadius);
     }
 
     private void RestoreSelection()

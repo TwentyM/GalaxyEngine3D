@@ -33,9 +33,11 @@ script = ExtResource("1_view")
 position = Vector3(0, 1.4, 7.2)
 current = true
 script = ExtResource("2_camera")
-MinimumDistance = 4.5
-MaximumDistance = 16.0
-ZoomStep = 0.6
+MinimumDistance = 2.15
+MaximumDistance = 24.0
+ZoomExponent = 0.12
+PanSpeedFactor = 0.001
+KeyboardMoveSpeedFactor = 0.6
 
 [node name="Planet" type="MeshInstance3D" parent="."]
 mesh = SubResource("Mesh_planet")
