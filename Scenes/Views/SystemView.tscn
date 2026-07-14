@@ -1,0 +1,143 @@
+[gd_scene load_steps=18 format=3]
+
+[ext_resource type="Script" path="res://Source/Views/SystemView.cs" id="1_view"]
+[ext_resource type="Script" path="res://Source/Camera/OrbitCameraController.cs" id="2_camera"]
+
+[sub_resource type="StandardMaterial3D" id="Material_star"]
+shading_mode = 0
+albedo_color = Color(1, 0.78, 0.3, 1)
+emission_enabled = true
+emission = Color(1, 0.38, 0.05, 1)
+emission_energy_multiplier = 5.0
+
+[sub_resource type="StandardMaterial3D" id="Material_orbit"]
+shading_mode = 0
+albedo_color = Color(0.33, 0.4, 0.55, 0.55)
+transparency = 1
+
+[sub_resource type="StandardMaterial3D" id="Material_rock"]
+albedo_color = Color(0.45, 0.29, 0.17, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="Material_world"]
+albedo_color = Color(0.1, 0.38, 0.82, 1)
+roughness = 0.55
+
+[sub_resource type="StandardMaterial3D" id="Material_gas"]
+albedo_color = Color(0.78, 0.56, 0.32, 1)
+roughness = 0.7
+
+[sub_resource type="SphereMesh" id="Mesh_star"]
+radius = 1.25
+height = 2.5
+radial_segments = 32
+rings = 16
+
+[sub_resource type="SphereMesh" id="Mesh_inner"]
+radius = 0.42
+height = 0.84
+radial_segments = 20
+rings = 10
+
+[sub_resource type="SphereMesh" id="Mesh_middle"]
+radius = 0.62
+height = 1.24
+radial_segments = 24
+rings = 12
+
+[sub_resource type="SphereMesh" id="Mesh_outer"]
+radius = 0.9
+height = 1.8
+radial_segments = 28
+rings = 14
+
+[sub_resource type="SphereShape3D" id="Shape_inner"]
+radius = 0.52
+
+[sub_resource type="SphereShape3D" id="Shape_middle"]
+radius = 0.72
+
+[sub_resource type="SphereShape3D" id="Shape_outer"]
+radius = 1.0
+
+[sub_resource type="TorusMesh" id="Orbit_inner"]
+material = SubResource("Material_orbit")
+inner_radius = 3.47
+outer_radius = 3.53
+rings = 64
+ring_segments = 6
+
+[sub_resource type="TorusMesh" id="Orbit_middle"]
+material = SubResource("Material_orbit")
+inner_radius = 5.47
+outer_radius = 5.53
+rings = 64
+ring_segments = 6
+
+[sub_resource type="TorusMesh" id="Orbit_outer"]
+material = SubResource("Material_orbit")
+inner_radius = 7.47
+outer_radius = 7.53
+rings = 64
+ring_segments = 6
+
+[node name="SystemView" type="Node3D"]
+script = ExtResource("1_view")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+position = Vector3(0, 9, 22)
+current = true
+script = ExtResource("2_camera")
+MinimumDistance = 8.0
+MaximumDistance = 45.0
+ZoomStep = 1.8
+
+[node name="ContextLabel" type="Label3D" parent="."]
+position = Vector3(0, 3.0, 0)
+text = "Csillagrendszer"
+font_size = 42
+outline_size = 8
+billboard = 1
+
+[node name="Star" type="MeshInstance3D" parent="."]
+mesh = SubResource("Mesh_star")
+material_override = SubResource("Material_star")
+
+[node name="InnerOrbit" type="MeshInstance3D" parent="."]
+mesh = SubResource("Orbit_inner")
+
+[node name="MiddleOrbit" type="MeshInstance3D" parent="."]
+mesh = SubResource("Orbit_middle")
+
+[node name="OuterOrbit" type="MeshInstance3D" parent="."]
+mesh = SubResource("Orbit_outer")
+
+[node name="Cinder" type="MeshInstance3D" parent="."]
+position = Vector3(3.5, 0, 0)
+mesh = SubResource("Mesh_inner")
+material_override = SubResource("Material_rock")
+
+[node name="Picker" type="StaticBody3D" parent="Cinder" groups=["selectable_planet"]]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Cinder/Picker"]
+shape = SubResource("Shape_inner")
+
+[node name="Pelagos" type="MeshInstance3D" parent="."]
+position = Vector3(-2.2, 0, 5.05)
+mesh = SubResource("Mesh_middle")
+material_override = SubResource("Material_world")
+
+[node name="Picker" type="StaticBody3D" parent="Pelagos" groups=["selectable_planet"]]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Pelagos/Picker"]
+shape = SubResource("Shape_middle")
+
+[node name="Aurelia" type="MeshInstance3D" parent="."]
+position = Vector3(-6.2, 0, -4.2)
+mesh = SubResource("Mesh_outer")
+material_override = SubResource("Material_gas")
+
+[node name="Picker" type="StaticBody3D" parent="Aurelia" groups=["selectable_planet"]]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Aurelia/Picker"]
+shape = SubResource("Shape_outer")

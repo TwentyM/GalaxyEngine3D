@@ -1,0 +1,52 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://Source/Views/PlanetView.cs" id="1_view"]
+[ext_resource type="Script" path="res://Source/Camera/OrbitCameraController.cs" id="2_camera"]
+[ext_resource type="Shader" path="res://Shaders/Planet.gdshader" id="3_shader"]
+
+[sub_resource type="ShaderMaterial" id="Material_planet"]
+shader = ExtResource("3_shader")
+
+[sub_resource type="SphereMesh" id="Mesh_planet"]
+radius = 2.0
+height = 4.0
+radial_segments = 96
+rings = 48
+
+[sub_resource type="StandardMaterial3D" id="Material_atmosphere"]
+transparency = 1
+shading_mode = 0
+vertex_color_use_as_albedo = true
+albedo_color = Color(0.2, 0.58, 1, 0.09)
+
+[sub_resource type="SphereMesh" id="Mesh_atmosphere"]
+material = SubResource("Material_atmosphere")
+radius = 2.06
+height = 4.12
+radial_segments = 64
+rings = 32
+
+[node name="PlanetView" type="Node3D"]
+script = ExtResource("1_view")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+position = Vector3(0, 1.4, 7.2)
+current = true
+script = ExtResource("2_camera")
+MinimumDistance = 4.5
+MaximumDistance = 16.0
+ZoomStep = 0.6
+
+[node name="Planet" type="MeshInstance3D" parent="."]
+mesh = SubResource("Mesh_planet")
+material_override = SubResource("Material_planet")
+
+[node name="Atmosphere" type="MeshInstance3D" parent="."]
+mesh = SubResource("Mesh_atmosphere")
+
+[node name="ContextLabel" type="Label3D" parent="."]
+position = Vector3(0, 2.8, 0)
+text = "Bolygó"
+font_size = 48
+outline_size = 9
+billboard = 1

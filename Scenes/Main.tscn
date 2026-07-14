@@ -1,0 +1,101 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://Source/UI/MainController.cs" id="1_main"]
+[ext_resource type="Script" path="res://Source/Navigation/ViewRouter.cs" id="2_router"]
+[ext_resource type="Script" path="res://Source/Navigation/TransitionController.cs" id="3_transition"]
+[ext_resource type="PackedScene" path="res://Scenes/Views/GalaxyView.tscn" id="4_galaxy"]
+[ext_resource type="PackedScene" path="res://Scenes/Views/SystemView.tscn" id="5_system"]
+[ext_resource type="PackedScene" path="res://Scenes/Views/PlanetView.tscn" id="6_planet"]
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 1
+background_color = Color(0.004, 0.006, 0.018, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.25, 0.31, 0.48, 1)
+ambient_light_energy = 0.7
+tonemap_mode = 2
+
+[node name="Main" type="Node"]
+script = ExtResource("1_main")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_main")
+
+[node name="KeyLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-48, -32, 0)
+light_color = Color(0.82, 0.88, 1, 1)
+light_energy = 1.1
+shadow_enabled = true
+
+[node name="ViewRouter" type="Node3D" parent="."]
+script = ExtResource("2_router")
+GalaxyScene = ExtResource("4_galaxy")
+SystemScene = ExtResource("5_system")
+PlanetScene = ExtResource("6_planet")
+
+[node name="Hud" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="Panel" type="PanelContainer" parent="Hud"]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 480.0
+offset_bottom = 196.0
+
+[node name="Margin" type="MarginContainer" parent="Hud/Panel"]
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 12
+
+[node name="VBox" type="VBoxContainer" parent="Hud/Panel/Margin"]
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Hud/Panel/Margin/VBox"]
+theme_override_font_sizes/font_size = 22
+text = "GalaxyEngine3D"
+
+[node name="Selection" type="Label" parent="Hud/Panel/Margin/VBox"]
+text = "Kijelölés: nincs"
+
+[node name="Hint" type="Label" parent="Hud/Panel/Margin/VBox"]
+modulate = Color(0.72, 0.79, 0.92, 1)
+text = "Bal kattintás: kijelölés"
+
+[node name="Buttons" type="HBoxContainer" parent="Hud/Panel/Margin/VBox"]
+theme_override_constants/separation = 8
+
+[node name="Back" type="Button" parent="Hud/Panel/Margin/VBox/Buttons"]
+text = "Vissza"
+
+[node name="Next" type="Button" parent="Hud/Panel/Margin/VBox/Buttons"]
+text = "Tovább"
+disabled = true
+
+[node name="Controls" type="Label" parent="Hud"]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -365.0
+offset_top = -42.0
+offset_right = -20.0
+offset_bottom = -18.0
+grow_horizontal = 0
+grow_vertical = 0
+text = "Jobb egérgomb: kamera forgatása · Görgő: zoom"
+horizontal_alignment = 2
+
+[node name="TransitionController" type="CanvasLayer" parent="."]
+layer = 100
+script = ExtResource("3_transition")
+
+[node name="FlashOverlay" type="ColorRect" parent="TransitionController"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 0.96, 0.82, 0)
